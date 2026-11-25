@@ -89,7 +89,7 @@ process.exitCode = await nt.run(process.argv.slice(2));
 |--------|-------|
 | `@four7/cli-core` | The command model (`commands<C>()`, plans, actions), the program runner (`defineProgram`), confirmation, errors, exit codes and logging |
 | `/config` | `defineConfig`: a TOML file under the config home, overlaid by a prefix's variables, validated by a zod schema |
-| `/process` | The plan runner, spawning, signals, ports and health checks |
+| `/process` | The plan runner, spawning, signals, ports, health checks, finding a program on PATH, and named checks run at once and reported in order |
 | `/screen` | The Ink screen host: `presentView`, `assertTerminal`, `awaitKey` |
 | `/ui` | The component library: atoms, molecules, hooks, glyphs and hints |
 | `/builder` | The interactive builder a program's `i` leaf opens |
