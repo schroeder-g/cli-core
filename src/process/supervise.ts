@@ -19,6 +19,9 @@ import type { ChildHandle } from './spawn.ts';
 /** How long a launched process with a port gets to answer, by default. */
 const READY_MS = 120_000;
 
+/** How long a process with no start time gets to show it already exited. */
+const EXITED_MS = 1_000;
+
 /** A process a supervisor starts, in a process group of its own. */
 export interface Supervised {
 	/** What its prefixed lines, its record and the logs call it. */
@@ -282,6 +285,15 @@ export async function launchDetached<
 				record(proc, child.pid, file),
 			]);
 			if (entry === undefined) {
+				// ps finds no start time for a process that exited at once.
+				const code = await Promise.race([
+					child.exited,
+					Bun.sleep(EXITED_MS),
+				]);
+				if (typeof code === 'number')
+					throw new Failure(
+						`${proc.name} exited with ${code} before answering; its log is ${file}${stillRunning()}`,
+					);
 				await stopGroup(child.pid, { name: proc.name });
 				throw new Failure(
 					`${proc.name} (pid ${child.pid}) gave no start time, so it was stopped rather than recorded${stillRunning()}`,

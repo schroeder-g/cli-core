@@ -379,7 +379,10 @@ describe('launchDetached and stopRecorded', () => {
 		const [api, web] = await fixtures();
 		const quitter: Served = {
 			...web!,
-			step: { ...web!.step, argv: ['bun', '-e', 'process.exit(1)'] },
+			step: {
+				...web!.step,
+				argv: ['bun', '-e', 'setTimeout(() => process.exit(1), 500)'],
+			},
 		};
 		const failure = await failureOf(detached([api!, quitter]));
 		expect(failure).toBeInstanceOf(Failure);
@@ -393,6 +396,22 @@ describe('launchDetached and stopRecorded', () => {
 				.read()
 				.map(({ name }) => name),
 		).toEqual(['api', 'web']);
+	});
+
+	test('a process exiting before its start time is read fails naming its exit', async () => {
+		const [api, web] = await fixtures();
+		const quitter: Served = {
+			...web!,
+			step: { ...web!.step, argv: ['true'] },
+		};
+		const failure = await failureOf(detached([api!, quitter]));
+		expect(failure).toBeInstanceOf(Failure);
+		expect(failure.message).toStartWith(
+			'web exited with 0 before answering',
+		);
+		expect(failure.message).toContain(
+			`still running, recorded in ${records().path}: api (port ${api!.port}`,
+		);
 	});
 
 	test('a process that cannot start fails naming those already started', async () => {
