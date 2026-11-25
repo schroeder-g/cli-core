@@ -57,10 +57,10 @@ export const fixture = program({
 		{
 			manifest: LAZY,
 			load: () =>
-				Promise.resolve(
-					group(
-						LAZY.name,
-						LAZY.description,
+				group({
+					name: LAZY.name,
+					description: LAZY.description,
+					commands: [
 						leaf({
 							name: 'up',
 							description: LAZY.leaves.up,
@@ -72,23 +72,25 @@ export const fixture = program({
 							description: LAZY.leaves.down,
 							plan: nothing,
 						}),
-					),
-				),
-		},
-		group(
-			'dev',
-			'Run it here.',
-			leaf({
-				name: 'start',
-				description: 'Start it.',
-				args: object({
-					services: optional(services),
-					fresh: flag('--fresh'),
+					],
 				}),
-				plan: nothing,
-			}),
-			leaf({ name: 'stop', description: 'Stop it.', plan: nothing }),
-		),
+		},
+		group({
+			name: 'dev',
+			description: 'Run it here.',
+			commands: [
+				leaf({
+					name: 'start',
+					description: 'Start it.',
+					args: object({
+						services: optional(services),
+						fresh: flag('--fresh'),
+					}),
+					plan: nothing,
+				}),
+				leaf({ name: 'stop', description: 'Stop it.', plan: nothing }),
+			],
+		}),
 		leaf({
 			name: 'doctor',
 			description: 'Check it.',

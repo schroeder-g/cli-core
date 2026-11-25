@@ -11,7 +11,7 @@ import type {
 	CommandParser,
 	Context,
 	GroupManifest,
-	GroupMembers,
+	GroupSpec,
 	LeafSpec,
 	Planner,
 } from './command.ts';
@@ -58,11 +58,11 @@ export function builders<C extends Context>(): CommandBuilders<C> {
 		);
 	}
 
-	const group = (
-		name: string,
-		description: string,
-		...[first, second, ...rest]: GroupMembers<C>
-	): CommandParser<C> => {
+	const group = ({
+		name,
+		description,
+		commands: [first, second, ...rest],
+	}: GroupSpec<C>): CommandParser<C> => {
 		const built = command(name, or(first, second, ...rest), {
 			description: doc(description),
 		});
@@ -79,13 +79,11 @@ export function builders<C extends Context>(): CommandBuilders<C> {
 		).map(([name, description]) => leaf({ name, description, plan }));
 		if (first === undefined || second === undefined)
 			throw new Error(`${manifest.name} names fewer than two leaves`);
-		return group(
-			manifest.name,
-			manifest.description,
-			first,
-			second,
-			...rest,
-		);
+		return group({
+			name: manifest.name,
+			description: manifest.description,
+			commands: [first, second, ...rest],
+		});
 	};
 
 	return { leaf, group, lazyGroup, notBuilt };

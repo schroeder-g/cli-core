@@ -107,7 +107,13 @@ const tick = async (ctx: NotesContext): Promise<number> => {
 
 const nt = program({
 	name: 'nt',
-	commands: [group('notes', 'Keep notes.', add, list)],
+	commands: [
+		group({
+			name: 'notes',
+			description: 'Keep notes.',
+			commands: [add, list],
+		}),
+	],
 	screens: [{ group: 'notes', open: tick }],
 	session: run => ({
 		context: base => ({ ...base, file: run.config().file }),

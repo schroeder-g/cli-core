@@ -48,7 +48,13 @@ const twice = leaf({
 const rooted = (root?: ProgramSpec<Context, RootConfig>['root']) =>
 	program({
 		name: 'rt',
-		commands: [group('at', 'Where it runs.', where, twice)],
+		commands: [
+			group({
+				name: 'at',
+				description: 'Where it runs.',
+				commands: [where, twice],
+			}),
+		],
 		root,
 		session: () => ({ context: base => base }),
 	});

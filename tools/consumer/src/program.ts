@@ -57,7 +57,11 @@ const list = leaf({
 export const nt = program({
 	name: 'nt',
 	commands: [
-		group('notes', 'Keep notes.', add, list),
+		group({
+			name: 'notes',
+			description: 'Keep notes.',
+			commands: [add, list],
+		}),
 		{
 			manifest: {
 				name: 'sync',
@@ -66,23 +70,27 @@ export const nt = program({
 			},
 			load: () =>
 				Promise.resolve(
-					group(
-						'sync',
-						'Sync the notes.',
-						leaf({
-							name: 'push',
-							description: 'Push them.',
-							plan: () =>
-								Promise.resolve({
-									steps: [{ title: 'Push', cwd: '.', argv: ['true'] }],
-								}),
-						}),
-						leaf({
-							name: 'pull',
-							description: 'Pull them.',
-							plan: () => Promise.resolve({ steps: [] }),
-						}),
-					),
+					group({
+						name: 'sync',
+						description: 'Sync the notes.',
+						commands: [
+							leaf({
+								name: 'push',
+								description: 'Push them.',
+								plan: () =>
+									Promise.resolve({
+										steps: [
+											{ title: 'Push', cwd: '.', argv: ['true'] },
+										],
+									}),
+							}),
+							leaf({
+								name: 'pull',
+								description: 'Pull them.',
+								plan: () => Promise.resolve({ steps: [] }),
+							}),
+						],
+					}),
 				),
 		},
 	],

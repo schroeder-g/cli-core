@@ -113,14 +113,17 @@ export type GroupMembers<C extends Context> = readonly [
 	...CommandParser<C>[],
 ];
 
+/** A group: its name, its description and the commands it holds. */
+export interface GroupSpec<C extends Context> {
+	readonly name: string;
+	readonly description: string;
+	readonly commands: GroupMembers<C>;
+}
+
 /** The command builders over one program's context. */
 export interface CommandBuilders<C extends Context> {
 	readonly leaf: LeafBuilder<C>;
-	readonly group: (
-		name: string,
-		description: string,
-		...members: GroupMembers<C>
-	) => CommandParser<C>;
+	readonly group: (spec: GroupSpec<C>) => CommandParser<C>;
 	/**
 	 * A group of the manifest's shape whose every leaf takes nothing and
 	 * plans through `plan`: a stand-in for one loaded later.

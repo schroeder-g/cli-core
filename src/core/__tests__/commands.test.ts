@@ -70,21 +70,31 @@ const open = leaf({
 	}),
 });
 
-const later = group(
-	'later',
-	'Loaded when asked.',
-	leaf({ name: 'up', description: 'Up.', plan: () => ({ steps: [] }) }),
-	leaf({
-		name: 'down',
-		description: 'Down.',
-		plan: () => ({ steps: [] }),
-	}),
-);
+const later = group({
+	name: 'later',
+	description: 'Loaded when asked.',
+	commands: [
+		leaf({
+			name: 'up',
+			description: 'Up.',
+			plan: () => ({ steps: [] }),
+		}),
+		leaf({
+			name: 'down',
+			description: 'Down.',
+			plan: () => ({ steps: [] }),
+		}),
+	],
+});
 
 const greeter = program({
 	name: 'gr',
 	commands: [
-		group('say', 'Say things.', greet, wave, open),
+		group({
+			name: 'say',
+			description: 'Say things.',
+			commands: [greet, wave, open],
+		}),
 		{
 			manifest: {
 				name: 'later',
