@@ -1,0 +1,8 @@
+{
+  "mode": "pre",
+  "tag": "next",
+  "initialVersions": {
+    "@four7/cli-core": "0.1.0"
+  },
+  "changesets": []
+}

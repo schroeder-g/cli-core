@@ -163,6 +163,8 @@ bun run consumer      # the packed package installed under pnpm outside the repo
 
 A change a release should mention adds a changeset (`bunx changeset`). On `main`, `.github/workflows/release.yaml` gathers the pending changesets into a version pull request; merging it publishes the new version to npm with provenance, through npm's trusted publishing.
 
+Releases are prereleases while `.changeset/pre.json` exists: each version pull request publishes the next `0.x.y-next.n` under the `next` dist-tag, which `npm install @four7/cli-core@next` takes, and `latest` stays where it was. `bunx changeset pre exit`, merged, makes the next version pull request publish the plain version under `latest`; `bunx changeset pre enter next` starts a new prerelease line.
+
 ## TODO
 
 - Publish to [JSR](https://jsr.io) instead of npm, once JSR can serve this package to Bun. Two gaps block it today. JSR's npm layer ships `.tsx` files untranspiled ([jsr-io/jsr#996](https://github.com/jsr-io/jsr/issues/996)), so `/ui`, `/screen` and `/builder` fail on import. JSR also cannot declare Ink and React as peers ([jsr-io/jsr#880](https://github.com/jsr-io/jsr/issues/880)). Publishing will need a GitHub secret holding the JSR token that `release.yaml` publishes with.
