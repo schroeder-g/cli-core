@@ -9,6 +9,7 @@
 		"src/ui/screen.ts",
 		"src/ui/index.ts",
 		"src/testing/index.ts",
+		"src/git/index.ts",
 		"src/**/__tests__/**",
 		"tools/**/__tests__/**"
 	],
