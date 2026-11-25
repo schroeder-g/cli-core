@@ -1,6 +1,7 @@
 import type { LogLevel } from '@logtape/logtape';
 import { merge, object, or } from '@optique/core/constructs';
 import type { SourceContext } from '@optique/core/context';
+import type { Message } from '@optique/core/message';
 import {
 	map,
 	multiple,
@@ -24,6 +25,12 @@ import { openBuilder } from '../builder/index.ts';
 import { place } from '../builder/fields.ts';
 import type { Place } from '../builder/fields.ts';
 import { runPlan } from '../process/run.ts';
+import {
+	COMMANDS_SECTION,
+	FLAGS_SECTION,
+	section,
+	synopsisOver,
+} from './synopsis.ts';
 import type { CoreViews, Present, Views } from '../ui/screen.ts';
 import { presenter } from '../ui/views.ts';
 import {
@@ -63,6 +70,7 @@ import type { Streams } from './streams.ts';
 
 /** What separates a help page's usage from the paragraphs under it. */
 const PARAGRAPH_BREAK = '\n\n';
+const USAGE_LABEL = 'Usage:';
 
 /** The leaf that opens the builder, unless the program names another. */
 const BUILDER = 'i';
@@ -92,6 +100,12 @@ export interface Session<C extends Context> {
 export interface ProgramSpec<C extends Context, T> {
 	/** The program's name, as usage and the builder spell it. */
 	readonly name: string;
+	/** One line opening the root help, above its usage line. */
+	readonly brief?: string;
+	/** A paragraph after the root help's usage line, before its sections. */
+	readonly description?: string;
+	/** Text closing every help page, after its sections. */
+	readonly footer?: string;
 	/**
 	 * The top-level commands, in help's order; a lazy group stands in
 	 * place.
@@ -175,14 +189,19 @@ const globals = object({
 });
 
 /**
- * The globals over a tree of leaves: the shape every program has.
+ * The globals over a tree of leaves: the shape every program has. Help
+ * lists the tree under Commands and the globals under Flags, after the
+ * flags of the leaf it opened on.
  *
  * @public
  */
 export function withGlobals<C extends Context>(
 	tree: Parser<Mode, Command<C> | BuilderRequest, unknown>,
 ): Program<C> {
-	return merge(globals, tree);
+	return merge(
+		section(COMMANDS_SECTION, tree),
+		section(FLAGS_SECTION, globals),
+	);
 }
 
 /** @public */
@@ -195,6 +214,9 @@ export type Program<C extends Context> = FluentParser<
 const isLazy = <C extends Context>(
 	member: CommandParser<C> | LazyGroup<C>,
 ): member is LazyGroup<C> => 'manifest' in member;
+
+const prose = (text: string | undefined): Message | undefined =>
+	text === undefined ? undefined : doc(text);
 
 // The first pass hands the context what it parsed, or a partial value
 // when it stopped short; only `--config` is read from it.
@@ -331,9 +353,16 @@ async function runWith<C extends Context, T>(
 	const options: RunOptions = {
 		args: argv,
 		programName: spec.name,
-		help: { command: true, option: { names: HELP_FLAGS } },
+		brief: prose(spec.brief),
+		description: prose(spec.description),
+		footer: prose(spec.footer),
+		help: {
+			command: { group: COMMANDS_SECTION },
+			option: { names: HELP_FLAGS, group: FLAGS_SECTION },
+		},
+		usageLine: () => synopsisOver(globals.usage),
 		showDefault: true,
-		completion: 'command',
+		completion: { command: { group: COMMANDS_SECTION } },
 		errorExitCode: REFUSED,
 		colors:
 			opts.stdout === undefined ? undefined : stdout.isTTY === true,
@@ -421,7 +450,7 @@ async function runWith<C extends Context, T>(
 	};
 
 	// The page's first paragraph is the command's usage, wrapped and
-	// coloured as the help shows it.
+	// coloured as the help shows it, less the brief the root opens on.
 	const usageLine = async (
 		program: Program<C>,
 		path: readonly string[],
@@ -430,12 +459,15 @@ async function runWith<C extends Context, T>(
 		await helpPage(program, path, line => {
 			page += line;
 		});
-		writeErr(page.split(PARAGRAPH_BREAK)[0] ?? '');
+		const lines = (page.split(PARAGRAPH_BREAK)[0] ?? '').split('\n');
+		const usage = lines.findIndex(line => line.includes(USAGE_LABEL));
+		writeErr(lines.slice(Math.max(usage, 0)).join('\n'));
 	};
 
-	// Optique puts the root's usage above every error. Inside a
-	// command, that command's own usage answers the mistake, so the
-	// error is held until the usage is out.
+	// The usage above an error is the one its help page opens with: the
+	// root's synopsis, or the opened command's own grammar. Optique would
+	// put the root's full grammar there, so the error is held until the
+	// usage is out.
 	const parse = async (
 		program: Program<C>,
 		opened: readonly string[],
@@ -444,15 +476,11 @@ async function runWith<C extends Context, T>(
 		try {
 			return await runAsync(program, {
 				...options,
-				aboveError: opened.length === 0 ? 'usage' : 'none',
+				aboveError: 'none',
 				stderr: line => held.push(line),
 			});
 		} catch (error) {
-			if (
-				error instanceof Exit
-				&& error.code === REFUSED
-				&& opened.length > 0
-			)
+			if (error instanceof Exit && error.code === REFUSED)
 				await usageLine(program, opened);
 			throw error;
 		} finally {
@@ -547,15 +575,27 @@ function defineProgram<C extends Context, T>(
 
 	const groupNames = commands.filter(isGroup).map(nameOf);
 
-	const builder = command(
-		builderLeaf,
-		object({
-			builder: multiple(
-				argument(choice(groupNames, { metavar: 'GROUP' })),
-			),
-		}),
-		{ description: doc('Build a command interactively, at a group.') },
-	);
+	// The builder opens at a group, so a program of leaves alone has no
+	// builder leaf: nothing for it to open at, and Optique refuses a
+	// choice over no names.
+	const builder =
+		groupNames.length === 0
+			? []
+			: [
+					command(
+						builderLeaf,
+						object({
+							builder: multiple(
+								argument(choice(groupNames, { metavar: 'GROUP' })),
+							),
+						}),
+						{
+							description: doc(
+								'Build a command interactively, at a group.',
+							),
+						},
+					),
+				];
 
 	const build = (
 		loaded: ReadonlyMap<LazyGroup<C>, CommandParser<C>> = new Map(),
@@ -563,7 +603,7 @@ function defineProgram<C extends Context, T>(
 		const [first, ...rest] = resolveAll(loaded);
 		if (first === undefined)
 			throw new Error(`${spec.name} declares no command`);
-		return withGlobals<C>(or(first, ...rest, builder));
+		return withGlobals<C>(or(first, ...rest, ...builder));
 	};
 
 	const reader: ArgvReader = argvReader(valuedOptions(build().usage));

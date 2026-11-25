@@ -120,11 +120,69 @@ describe('the program run', () => {
 		expect(dev.stdout).toBe((await run(['dev', '--help'])).stdout);
 	});
 
+	test('help at the root and at a group: a synopsis, Commands, then Flags', async () => {
+		const synopsis = (path: string[]) =>
+			`Usage: fx ${path.map(word => `${word} `).join('')}[--dry-run] [--config FILE] [(-q/--quiet | [-v/--verbose...])] COMMAND [ARG...]\n`;
+
+		const cases: readonly [string[], string][] = [
+			[[], '--env'],
+			[['dev'], '--fresh'],
+			[['infra'], '--env'],
+		];
+		for (const [path, leafFlag] of cases) {
+			const { stdout } = await run([...path, '--help']);
+			expect(stdout).toContain(synopsis(path));
+			const commands = stdout.indexOf('\nCommands:\n');
+			const flags = stdout.indexOf('\nFlags:\n');
+			expect(commands).toBeGreaterThan(0);
+			expect(flags).toBeGreaterThan(commands);
+			expect(stdout.split('Flags:')).toHaveLength(2);
+			expect(stdout).toMatch(groupLine('--dry-run'));
+			expect(stdout).not.toContain(leafFlag);
+		}
+	});
+
+	test('the brief opens the root help, the description follows its usage, the footer closes every page', async () => {
+		const root = await run(['--help']);
+		const [brief, usage, blank, description] = root.stdout.split('\n');
+		expect(brief).toBe('Fixes things.');
+		expect(usage).toMatch(/^Usage: fx /);
+		expect(blank).toBe('');
+		expect(description).toBe(
+			'A fixture over every kind of command the core offers.',
+		);
+		expect(root.stdout).toMatch(
+			/\n\nEach command explains itself under fx help COMMAND\.\n$/,
+		);
+		const dev = await run(['dev', '--help']);
+		expect(dev.stdout).toMatch(/^Usage: fx dev /);
+		expect(dev.stdout).not.toContain('Fixes things.');
+		expect(dev.stdout).not.toContain('every kind of command');
+		expect(dev.stdout).toMatch(
+			/\n\nEach command explains itself under fx help COMMAND\.\n$/,
+		);
+	});
+
+	test("a leaf's help lists its flags under Flags, the globals after them", async () => {
+		const { stdout } = await run(['dev', 'start', '--help']);
+		expect(stdout).toMatch(
+			/^Usage: fx dev start \[-s\/--service SERVICES\] --fresh \[--dry-run\]/,
+		);
+		expect(stdout).not.toContain('Commands:');
+		const flags = stdout.split('\nFlags:\n')[1];
+		expect(flags).toMatch(groupLine('--fresh'));
+		expect(flags?.indexOf('--fresh')).toBeLessThan(
+			flags?.indexOf('--dry-run') ?? -1,
+		);
+	});
+
 	test('refuses an unknown command under the root usage', async () => {
 		const { code, stderr, stdout } = await run(['nope']);
 		expect(code).toBe(2);
-		expect(stderr).toMatch(/^Usage: fx /);
-		expect(stderr).toContain('fx doctor ');
+		expect(stderr).toMatch(
+			/^Usage: fx \[--dry-run\] .* COMMAND \[ARG\.\.\.\]\n/,
+		);
+		expect(stderr).not.toContain('doctor');
 		expect(stderr).toMatch(/\nError: .*nope.*\n$/);
 		expect(stdout).toBe('');
 	});
@@ -183,7 +241,8 @@ describe('the program run', () => {
 		expect(loads((await run(['-vv', 'dev', '--help'])).stderr)).toBe(0);
 		const help = await run(['-vv', 'infra', '--help']);
 		expect(loads(help.stderr)).toBe(1);
-		expect(help.stdout).toContain('up -e/--env ENV');
+		expect(help.stdout).toMatch(groupLine('up'));
+		expect(help.stdout).not.toContain('--env');
 		expect(
 			loads((await run(['-vv', '--dry-run', 'infra', 'down'])).stderr),
 		).toBe(1);

@@ -53,6 +53,9 @@ export type FixtureConfig = typeof config.defaults;
  */
 export const fixture = program({
 	name: 'fx',
+	brief: 'Fixes things.',
+	description: 'A fixture over every kind of command the core offers.',
+	footer: 'Each command explains itself under fx help COMMAND.',
 	commands: [
 		{
 			manifest: LAZY,
