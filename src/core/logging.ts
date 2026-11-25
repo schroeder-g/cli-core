@@ -12,6 +12,8 @@ const CATEGORY = 'cli';
 
 const META_CATEGORY = ['logtape', 'meta'];
 
+export type { Logger, LogLevel } from '@logtape/logtape';
+
 export const log = getLogger(CATEGORY);
 
 const format = getTextFormatter({

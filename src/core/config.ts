@@ -12,6 +12,8 @@ import { readToml } from './files.ts';
 
 const CONFIG_FILE = 'config.toml';
 
+export type { ConfigContext, ConfigMeta } from '@optique/config';
+
 export type Environment = Readonly<Record<string, string | undefined>>;
 
 type Table = Record<string, unknown>;
