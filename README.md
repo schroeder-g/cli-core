@@ -87,13 +87,13 @@ process.exitCode = await nt.run(process.argv.slice(2));
 
 | Import | Holds |
 |--------|-------|
-| `@four7/cli-core` | The command model (`commands<C>()`, plans, actions), the program runner (`defineProgram`), confirmation, errors, exit codes and logging |
+| `@four7/cli-core` | The command model (`commands<C>()`, plans, actions), the program runner (`defineProgram`), confirmation, errors, exit codes and logging, and the option vocabulary: `names` (a separated, completing list of names), `selectNamed` and `selectOne`, `timestamp` |
 | `/config` | `defineConfig`: a TOML file under the config home, overlaid by a prefix's variables, validated by a zod schema |
 | `/process` | The plan runner, spawning, signals, ports and health checks |
 | `/screen` | The Ink screen host: `presentView`, `assertTerminal`, `awaitKey` |
 | `/ui` | The component library: atoms, molecules, hooks, glyphs and hints |
 | `/builder` | The interactive builder a program's `i` leaf opens |
-| `/testing` | Captured streams, a stdin that claims to be a terminal, stubbed tools, free ports, a screen driver and `runCaptured` |
+| `/testing` | Captured streams, a stdin that claims to be a terminal, stubbed tools, free ports, a screen driver, `runCaptured`, the `hermetic` config loader, `refused` and `writeUnder` |
 
 `/screen` and `/ui` load Ink and React. The root and `/config` don't, so a program that never draws a screen never loads them.
 
