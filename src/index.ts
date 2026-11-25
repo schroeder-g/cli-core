@@ -12,3 +12,4 @@ export * from './core/store.ts';
 export * from './core/streams.ts';
 export * from './core/text.ts';
 export * from './core/main.ts';
+export * from './core/named-files.ts';

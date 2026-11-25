@@ -90,7 +90,7 @@ await runMain(nt.run);
 
 | Import | Holds |
 |--------|-------|
-| `@four7/cli-core` | The command model (`commands<C>()`, plans, actions), the program runner (`defineProgram`) and its entry (`runMain`), confirmation, errors, exit codes and logging |
+| `@four7/cli-core` | The command model (`commands<C>()`, plans, actions), the program runner (`defineProgram`) and its entry (`runMain`), confirmation, errors, exit codes, logging and a directory of named files (`namedFiles`) |
 | `/config` | `defineConfig`: a TOML file under the config home, overlaid by a prefix's variables, validated by a zod schema; `xdgHome`, the XDG base directories |
 | `/process` | The plan runner, spawning, signals, ports and health checks; opening a url and copying to the clipboard |
 | `/screen` | The Ink screen host: `presentView`, `assertTerminal`, `awaitKey` |
