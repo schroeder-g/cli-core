@@ -79,14 +79,14 @@ describe('refused', () => {
 
 describe('writeUnder', () => {
 	test('writes the file, its directories made', () => {
-		writeUnder(dir, 'apps/api/envs/.env.shared.op', 'KEY=\n');
-		writeUnder(dir, 'apps/api/envs/.env.staging.op', 'OTHER=\n');
-		expect(
-			readFileSync(join(dir, 'apps/api/envs/.env.shared.op'), 'utf8'),
-		).toBe('KEY=\n');
-		expect(
-			readFileSync(join(dir, 'apps/api/envs/.env.staging.op'), 'utf8'),
-		).toBe('OTHER=\n');
+		writeUnder(dir, 'notes/2026/one.txt', 'KEY=\n');
+		writeUnder(dir, 'notes/2026/two.txt', 'OTHER=\n');
+		expect(readFileSync(join(dir, 'notes/2026/one.txt'), 'utf8')).toBe(
+			'KEY=\n',
+		);
+		expect(readFileSync(join(dir, 'notes/2026/two.txt'), 'utf8')).toBe(
+			'OTHER=\n',
+		);
 	});
 });
 
