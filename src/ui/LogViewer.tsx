@@ -1,6 +1,6 @@
-import { Box, Text, useInput, useWindowSize } from 'ink';
-import type { Key } from 'ink';
-import { memo, useMemo, useState } from 'react';
+import { Box, Text, useBoxMetrics, useInput, useWindowSize } from 'ink';
+import type { DOMElement, Key } from 'ink';
+import { memo, useMemo, useRef, useState } from 'react';
 
 import { widthOf } from '../core/text.ts';
 import type { LogFollower, LogLine } from '../process/follower.ts';
@@ -20,9 +20,6 @@ import { Painted } from './molecules/Painted.tsx';
 import { isInterrupt } from './ScreenFrame.tsx';
 import { highlight, paint } from './paint.ts';
 import type { Rule } from './paint.ts';
-
-/** The lines the screen takes beside the log: title, filter, footer. */
-const CHROME_ROWS = 8;
 
 /** The rows assumed when the terminal does not say. */
 const DEFAULT_ROWS = 24;
@@ -172,12 +169,16 @@ const Line = memo(function Line({
 		[painted, regex],
 	);
 	return (
-		<Labeled
-			label={<Text color={colorOf(names, line.name)}>{line.name}</Text>}
-			width={nameWidth + 2}
-		>
-			<Painted segments={segments} />
-		</Labeled>
+		<Box flexShrink={0}>
+			<Labeled
+				label={
+					<Text color={colorOf(names, line.name)}>{line.name}</Text>
+				}
+				width={nameWidth + 2}
+			>
+				<Painted segments={segments} />
+			</Labeled>
+		</Box>
 	);
 });
 
@@ -206,7 +207,15 @@ export function LogViewer({
 	const [behind, setBehind] = useState(0);
 	const [prompt, setPrompt] = useState<string | undefined>(undefined);
 	const help = useHelp();
-	const height = Math.max(1, (rows || DEFAULT_ROWS) - CHROME_ROWS);
+	const stream = useRef<DOMElement>(null);
+	const { height: measured, hasMeasured } = useBoxMetrics(stream);
+	// The rows the rest of the frame leaves are known only once drawn. A
+	// frame drawn before the measure catches up overflows the stream's box,
+	// which ends flush with its newest line.
+	const height = Math.max(
+		1,
+		hasMeasured ? measured : rows || DEFAULT_ROWS,
+	);
 	const furthest = Math.max(0, visible.length - height);
 
 	const scroll = (by: number): void =>
@@ -249,12 +258,21 @@ export function LogViewer({
 	const shown = visible.slice(start, end);
 	const nameWidth = widthOf(names, name => name);
 	return (
-		<Box flexDirection='column'>
-			<Title
-				name={title}
-				sub={sub}
-			/>
-			<Box marginTop={1}>
+		<Box
+			flexDirection='column'
+			height={rows || DEFAULT_ROWS}
+			overflow='hidden'
+		>
+			<Box flexShrink={0}>
+				<Title
+					name={title}
+					sub={sub}
+				/>
+			</Box>
+			<Box
+				marginTop={1}
+				flexShrink={0}
+			>
 				<Names
 					names={names}
 					hidden={hidden}
@@ -280,9 +298,14 @@ export function LogViewer({
 				)}
 			</Box>
 			<Box
+				ref={stream}
 				flexDirection='column'
+				justifyContent='flex-end'
 				marginTop={1}
-				height={height}
+				flexGrow={1}
+				flexShrink={1}
+				flexBasis={0}
+				overflow='hidden'
 			>
 				{shown.length === 0 ? (
 					<Text dimColor>
@@ -302,8 +325,12 @@ export function LogViewer({
 						/>
 					))
 				)}
+				<Box flexGrow={1} />
 			</Box>
-			<Box marginTop={1}>
+			<Box
+				marginTop={1}
+				flexShrink={0}
+			>
 				<Text dimColor>
 					{visible.length === 0
 						? 'showing 0 of 0'
@@ -314,14 +341,21 @@ export function LogViewer({
 						: ''}
 				</Text>
 			</Box>
-			<Notice
-				text={problem === undefined ? undefined : `pattern: ${problem}`}
-			/>
-			{help.open ? (
-				<KeyHelp keys={allKeys(noun, leave)} />
-			) : (
-				<Hints hints={hints(noun, leave)} />
-			)}
+			<Box
+				flexDirection='column'
+				flexShrink={0}
+			>
+				<Notice
+					text={
+						problem === undefined ? undefined : `pattern: ${problem}`
+					}
+				/>
+				{help.open ? (
+					<KeyHelp keys={allKeys(noun, leave)} />
+				) : (
+					<Hints hints={hints(noun, leave)} />
+				)}
+			</Box>
 		</Box>
 	);
 }

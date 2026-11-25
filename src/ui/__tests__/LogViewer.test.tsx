@@ -13,6 +13,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { stripVTControlCharacters } from 'node:util';
 
 import { LogFollower } from '../../process/follower.ts';
 import { drive, matching, open, shown } from '../../testing/index.ts';
@@ -22,6 +23,13 @@ import { presentView } from '../screen.ts';
 
 const ENTER = '\r';
 
+const TITLE = 'nt logs  every run';
+
+/** Where Ink begins and ends each frame it writes. */
+const FRAME_START = '\u001b[?2026h';
+
+const FRAME_END = '\u001b[?2026l';
+
 let dir: string;
 
 beforeEach(() => {
@@ -30,6 +38,43 @@ beforeEach(() => {
 
 afterEach(() => {
 	rmSync(dir, { recursive: true, force: true });
+});
+
+/** Every frame written, each as the lines the terminal shows. */
+const framesOf = (raw: string): string[][] =>
+	raw
+		.split(FRAME_START)
+		.slice(1)
+		.map(frame =>
+			stripVTControlCharacters(frame.split(FRAME_END)[0] ?? '').split(
+				'\n',
+			),
+		);
+
+/** The last frame on `now`, the screen so far. */
+const lastFrame = (now: string): string =>
+	now.slice(now.lastIndexOf(TITLE));
+
+/**
+ * Whether a frame with the help open has settled: its stream holds the
+ * lines its foot says it shows.
+ */
+function settled(frame: string): boolean {
+	const lines = frame.split('\n');
+	const [, from, to] = /showing (\d+)-(\d+) of/.exec(frame) ?? [];
+	return (
+		frame.includes('keys · ? or q closes')
+		&& from !== undefined
+		&& lines.filter(line => / line \d+$/.test(line)).length
+			=== Number(to) - Number(from) + 1
+	);
+}
+
+/** Once the last frame has settled with the help open. */
+const helpSettled = (key: string): Step => ({
+	label: 'the help open and the stream settled',
+	until: now => settled(lastFrame(now)),
+	key,
 });
 
 /** A follower over an api and a web log, read once. */
@@ -161,5 +206,71 @@ describe('LogViewer', () => {
 			),
 		]);
 		expect(driven.result).toBe('back');
+	});
+
+	for (const [rows, each] of [
+		[24, 60],
+		[30, 60],
+		[24, 5],
+	] as const)
+		test(`a terminal ${rows} rows high holds every frame of ${each * 2} lines, the help open or not, a pattern's problem shown or not`, async () => {
+			const { logs } = follower(
+				Array.from({ length: each }, (_, at) => `api line ${at}`),
+				Array.from({ length: each }, (_, at) => `web line ${at}`),
+			);
+			const newest = `web line ${each - 1}`;
+			const driven = await view(
+				logs,
+				[
+					shown(newest, '?'),
+					helpSettled('?'),
+					matching(/all keys/, '/', lastFrame),
+					shown('/ ▏', '('),
+					shown('(▏', ENTER),
+					shown('pattern: ', '?'),
+					helpSettled('q'),
+					matching(/pattern: [\s\S]*all keys/, 'q', lastFrame),
+				],
+				rows,
+			);
+			expect(driven.result).toBe('back');
+			const frames = framesOf(driven.raw);
+			for (const frame of frames) {
+				expect(frame.length).toBeLessThanOrEqual(rows);
+				expect(frame[0]).toBe(TITLE);
+				expect(
+					frame.findLast(line => / line \d+$/.test(line)),
+				).toEndWith(newest);
+			}
+			const helped = frames.filter(frame => settled(frame.join('\n')));
+			expect(helped.length).toBeGreaterThan(1);
+			for (const frame of helped) {
+				expect(frame).toHaveLength(rows);
+				expect(frame.at(-1)).toStartWith('╰');
+				expect(
+					frame.findLast(line => / line \d+$/.test(line)),
+				).toEndWith(newest);
+			}
+		});
+
+	test('a terminal too short for the help keeps its title and cuts the help', async () => {
+		const { logs } = follower(
+			Array.from({ length: 30 }, (_, at) => `api line ${at}`),
+			[],
+		);
+		const driven = await view(
+			logs,
+			[
+				shown('api line 29', '?'),
+				shown('keys · ? or q closes', 'q'),
+				matching(/all keys/, 'q', lastFrame),
+			],
+			12,
+		);
+		expect(driven.result).toBe('back');
+		for (const frame of framesOf(driven.raw)) {
+			expect(frame.length).toBeLessThanOrEqual(12);
+			expect(frame[0]).toBe(TITLE);
+		}
 	});
 });
