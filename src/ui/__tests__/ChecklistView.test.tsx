@@ -171,6 +171,18 @@ describe('ChecklistView', () => {
 		expect([...(result ?? [])].sort()).toEqual(['docs', 'site']);
 	});
 
+	test('a notice clears on the next key, a move included', async () => {
+		const { last } = await run(
+			[
+				shown('▸ [ ] store', ENTER),
+				again('nothing yet', 'j'),
+				again('▸ [ ] api', 'q'),
+			],
+			{ onConfirm: () => 'nothing yet' },
+		);
+		expect(last).not.toContain('nothing yet');
+	});
+
 	test('a click on a row points at it and toggles it', async () => {
 		const { result } = await run([
 			shown('▸ [ ] store', click(5)),
