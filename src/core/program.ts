@@ -547,15 +547,27 @@ function defineProgram<C extends Context, T>(
 
 	const groupNames = commands.filter(isGroup).map(nameOf);
 
-	const builder = command(
-		builderLeaf,
-		object({
-			builder: multiple(
-				argument(choice(groupNames, { metavar: 'GROUP' })),
-			),
-		}),
-		{ description: doc('Build a command interactively, at a group.') },
-	);
+	// The builder opens at a group, so a program of leaves alone has no
+	// builder leaf: nothing for it to open at, and Optique refuses a
+	// choice over no names.
+	const builder =
+		groupNames.length === 0
+			? []
+			: [
+					command(
+						builderLeaf,
+						object({
+							builder: multiple(
+								argument(choice(groupNames, { metavar: 'GROUP' })),
+							),
+						}),
+						{
+							description: doc(
+								'Build a command interactively, at a group.',
+							),
+						},
+					),
+				];
 
 	const build = (
 		loaded: ReadonlyMap<LazyGroup<C>, CommandParser<C>> = new Map(),
@@ -563,7 +575,7 @@ function defineProgram<C extends Context, T>(
 		const [first, ...rest] = resolveAll(loaded);
 		if (first === undefined)
 			throw new Error(`${spec.name} declares no command`);
-		return withGlobals<C>(or(first, ...rest, builder));
+		return withGlobals<C>(or(first, ...rest, ...builder));
 	};
 
 	const reader: ArgvReader = argvReader(valuedOptions(build().usage));

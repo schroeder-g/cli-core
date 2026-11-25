@@ -157,6 +157,39 @@ const onTerminal = (argv: readonly string[]) =>
 		stdin: stdin({ tty: true }),
 	});
 
+describe('a program of leaves alone', () => {
+	const flat = program({
+		name: 'fl',
+		commands: [greet, wave],
+		session: run => ({
+			context: base => ({
+				...base,
+				root: tmpdir(),
+				greeting: run.config().greeting,
+			}),
+		}),
+	});
+
+	const runFlat = (argv: readonly string[]) =>
+		runCaptured(flat.run, argv, { load: hermetic(config) });
+
+	test('builds and runs its leaves', async () => {
+		const planned = await runFlat(['--dry-run', 'greet', 'ada']);
+		expect(planned.code).toBe(0);
+		expect(planned.stdout).toContain('$ echo hello ada');
+	});
+
+	test('has no builder leaf, since there is no group to build at', async () => {
+		const help = await runFlat(['--help']);
+		expect(help.code).toBe(0);
+		expect(help.stdout).toMatch(/\n  greet\s/);
+		expect(help.stdout).not.toMatch(/\n  i\s/);
+		const builder = await runFlat(['i']);
+		expect(builder.code).toBe(2);
+		expect(builder.stderr).toMatch(/Error: .*\bi\b/);
+	});
+});
+
 describe('a program built from its commands', () => {
 	test("its config's type is the one the config's schema gives", () => {
 		const inferred: Equal<SessionConfig, { greeting: string }> = true;
