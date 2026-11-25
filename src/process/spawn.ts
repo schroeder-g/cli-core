@@ -18,6 +18,7 @@ import type {
 	Step,
 } from '../core/plan.ts';
 import type { OutputStream, OutputStreams } from '../core/streams.ts';
+import { signalGroup } from './signals.ts';
 
 /**
  * How a log is opened for writing: appended, created, never through a
@@ -94,11 +95,11 @@ export interface SpawnOptions {
  * A running child. `exited` resolves with its code, `128 + n` for a
  * signal, once every piped byte has been forwarded, so a grandchild
  * that keeps the pipe open keeps it pending. `kill` signals the process
- * group when the child was `detached`, else the child alone. `release`
- * lets the caller's event loop end while a `detached` child lives: the
- * process is unref'd and its piped streams are cancelled, so nothing
- * more of its output is forwarded; on a child that is not `detached`
- * it does nothing.
+ * group when the child was `detached`, else the child alone, and does
+ * nothing once it has gone. `release` lets the caller's event loop end
+ * while a `detached` child lives: the process is unref'd and its piped
+ * streams are cancelled, so nothing more of its output is forwarded;
+ * on a child that is not `detached` it does nothing.
  *
  * @public
  */
@@ -415,7 +416,7 @@ export async function spawnChild(
 			exitCode(proc, code),
 		),
 		kill: signal => {
-			if (opts.detached) process.kill(-proc.pid, signal);
+			if (opts.detached) signalGroup(proc.pid, signal);
 			else proc.kill(signal);
 		},
 		release: () => {

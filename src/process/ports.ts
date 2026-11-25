@@ -34,6 +34,9 @@ export async function until(
 	timeoutMs: number,
 	signal?: AbortSignal,
 ): Promise<boolean> {
+	// retry() throws its own error for a signal aborted before the first
+	// attempt, where no NotYet tells the two apart.
+	if (signal?.aborted === true) return false;
 	try {
 		await retry(
 			async () => {
