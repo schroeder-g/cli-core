@@ -22,3 +22,4 @@ export * from './molecules/Row.tsx';
 export * from './molecules/StatusRow.tsx';
 export * from './mouse.ts';
 export * from './paint.ts';
+export * from './ChecklistView.tsx';
