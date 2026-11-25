@@ -24,6 +24,7 @@ import { commands } from '../../core/command.ts';
 import type { Context } from '../../core/command.ts';
 import { Failure } from '../../core/errors.ts';
 import { configureLogging } from '../../core/logging.ts';
+import { shellLine } from '../../core/plan.ts';
 import type { Plan, Secret, Step } from '../../core/plan.ts';
 import {
 	capture as captured,
@@ -179,7 +180,7 @@ function startChild(
 		cmd =
 			process.platform === 'darwin'
 				? ['script', '-q', '/dev/null', ...cmd]
-				: ['script', '-qec', cmd.join(' '), '/dev/null'];
+				: ['script', '-qec', shellLine(cmd), '/dev/null'];
 	const proc = Bun.spawn({
 		cmd,
 		cwd: ROOT,
