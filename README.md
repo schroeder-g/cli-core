@@ -72,7 +72,6 @@ const nt = defineProgram<NotesContext, typeof config.defaults>({
 	session: run => ({
 		context: base => ({
 			...base,
-			root: process.cwd(),
 			file: run.config().file,
 		}),
 	}),

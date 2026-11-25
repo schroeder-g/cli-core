@@ -83,11 +83,12 @@ export interface Session<C extends Context> {
 	/** Sources beside the config's, registered unless help is asked. */
 	readonly contexts?: readonly SourceContext[];
 	/**
-	 * The run's context over what the runner owns. Called only for a
-	 * leaf about to plan, a screen about to open or the builder about to
-	 * open, so help and completion never reach what it reads.
+	 * The run's context over what the runner owns, `root` included.
+	 * Called only for a leaf about to plan, a screen about to open or
+	 * the builder about to open, so help and completion never reach
+	 * what it reads.
 	 */
-	context(base: Omit<Context, 'root'>): C;
+	context(base: Context): C;
 }
 
 export interface ProgramSpec<C extends Context, T> {
@@ -102,6 +103,13 @@ export interface ProgramSpec<C extends Context, T> {
 	/** The leaf that opens the builder. */
 	readonly builder?: string;
 	readonly config: Config<T>;
+	/**
+	 * The root the run's steps resolve against, located from the
+	 * working directory; the working directory itself by default. It is
+	 * called once per run, and only when the context is built, so help
+	 * and completion never locate it; what it throws ends the run.
+	 */
+	readonly root?: (cwd: string) => string;
 	/**
 	 * Sets up a run over `config`, which answers the config loaded so
 	 * far.
@@ -126,6 +134,10 @@ export interface RunProgramOptions<
 	/** The tree, over the spec's, as the fixtures run under one. */
 	readonly program?: Program<C>;
 	readonly session?: SessionFactory<C, T>;
+	/** The directory the root is located from, the process's by default. */
+	readonly cwd?: string;
+	/** The root, when the caller located it already, over the spec's. */
+	readonly root?: string;
 }
 
 // A type literal, not an interface: merge() admits only values with an
@@ -229,6 +241,7 @@ async function runWith<C extends Context, T>(
 	reentered?: {
 		readonly program: Program<C>;
 		readonly session: Session<C>;
+		readonly root: () => string;
 	},
 ): Promise<number> {
 	const { spec, reader, load } = compiled;
@@ -254,6 +267,17 @@ async function runWith<C extends Context, T>(
 		reentered?.session
 		?? (opts.session ?? spec.session)({ config: () => config });
 
+	let located = opts.root;
+
+	const root =
+		reentered?.root
+		?? (() => {
+			located ??= (spec.root ?? (cwd => cwd))(
+				opts.cwd ?? process.cwd(),
+			);
+			return located;
+		});
+
 	const options: RunOptions = {
 		args: argv,
 		programName: spec.name,
@@ -277,6 +301,7 @@ async function runWith<C extends Context, T>(
 	/** The run's context, once the config is loaded. */
 	const contextOf = (dryRun: boolean): C =>
 		session.context({
+			root: root(),
 			dryRun,
 			stdin,
 			stdout,
@@ -306,6 +331,7 @@ async function runWith<C extends Context, T>(
 			{
 				program,
 				session,
+				root,
 			},
 		);
 	};
