@@ -160,4 +160,4 @@ A change a release should mention adds a changeset (`bunx changeset`). On `main`
 
 ## TODO
 
-- Publish to [JSR](https://jsr.io) instead of npm. This needs a GitHub secret holding the JSR token that `release.yaml` publishes with.
+- Publish to [JSR](https://jsr.io) instead of npm, once JSR can serve this package to Bun. Two gaps block it today. JSR's npm layer ships `.tsx` files untranspiled ([jsr-io/jsr#996](https://github.com/jsr-io/jsr/issues/996)), so `/ui`, `/screen` and `/builder` fail on import. JSR also cannot declare Ink and React as peers ([jsr-io/jsr#880](https://github.com/jsr-io/jsr/issues/880)). Publishing will need a GitHub secret holding the JSR token that `release.yaml` publishes with.
