@@ -43,6 +43,10 @@
 		"./testing": {
 			"types": "./dist/testing/index.d.ts",
 			"default": "./dist/testing/index.js"
+		},
+		"./git": {
+			"types": "./dist/git/index.d.ts",
+			"default": "./dist/git/index.js"
 		}
 	},
 	"publishConfig": {
@@ -66,8 +70,7 @@
 		"@optique/config": "1.3.6",
 		"@optique/logtape": "1.3.6",
 		"@optique/run": "1.3.6",
-		"es-toolkit": "1.52.0",
-		"strip-ansi": "7.2.0"
+		"es-toolkit": "1.52.0"
 	},
 	"devDependencies": {
 		"@changesets/changelog-github": "^0.5.1",

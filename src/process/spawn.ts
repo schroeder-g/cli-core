@@ -9,9 +9,16 @@ import { resolve } from 'node:path';
 
 import { Failure, codeOf } from '../core/errors.ts';
 import { CANNOT_SPAWN, signalExit } from '../core/exit.ts';
-import { isSecret } from '../core/plan.ts';
-import type { Arg, Secret, Step } from '../core/plan.ts';
+import { log } from '../core/logging.ts';
+import { commandLine, isSecret } from '../core/plan.ts';
+import type {
+	Arg,
+	CaptureOptions,
+	Secret,
+	Step,
+} from '../core/plan.ts';
 import type { OutputStream, OutputStreams } from '../core/streams.ts';
+import { signalGroup } from './signals.ts';
 
 /**
  * How a log is opened for writing: appended, created, never through a
@@ -46,6 +53,11 @@ interface Stdio {
 interface Resolved {
 	readonly argv: readonly string[];
 	readonly env: Readonly<Record<string, string>>;
+}
+
+interface Unresolved {
+	readonly argv: readonly Arg[];
+	readonly env?: Readonly<Record<string, Arg>>;
 }
 
 interface Writer {
@@ -83,11 +95,11 @@ export interface SpawnOptions {
  * A running child. `exited` resolves with its code, `128 + n` for a
  * signal, once every piped byte has been forwarded, so a grandchild
  * that keeps the pipe open keeps it pending. `kill` signals the process
- * group when the child was `detached`, else the child alone. `release`
- * lets the caller's event loop end while a `detached` child lives: the
- * process is unref'd and its piped streams are cancelled, so nothing
- * more of its output is forwarded; on a child that is not `detached`
- * it does nothing.
+ * group when the child was `detached`, else the child alone, and does
+ * nothing once it has gone. `release` lets the caller's event loop end
+ * while a `detached` child lives: the process is unref'd and its piped
+ * streams are cancelled, so nothing more of its output is forwarded;
+ * on a child that is not `detached` it does nothing.
  *
  * @public
  */
@@ -148,16 +160,18 @@ const reasonOf = (error: unknown): string => {
 };
 
 /**
- * Each distinct secret of a step read once, at the spawn, and every
+ * Each distinct secret of a run read once, at the spawn, and every
  * value checked for a NUL byte, which neither an argument nor a
  * variable can carry and which the spawn error would otherwise quote.
+ * `what` names the run in that refusal.
  */
-async function resolved(step: Step): Promise<Resolved> {
-	const entries = Object.entries(step.env ?? {});
+async function resolved(
+	{ argv, env = {} }: Unresolved,
+	what: string,
+): Promise<Resolved> {
+	const entries = Object.entries(env);
 	const secrets = new Set(
-		[...step.argv, ...entries.map(([, value]) => value)].filter(
-			isSecret,
-		),
+		[...argv, ...entries.map(([, value]) => value)].filter(isSecret),
 	);
 	const values = new Map<Secret, string>(
 		await Promise.all(
@@ -171,13 +185,13 @@ async function resolved(step: Step): Promise<Resolved> {
 		const text = isSecret(arg) ? values.get(arg)! : arg;
 		if (text.includes('\0'))
 			throw new Failure(
-				`${name} holds a NUL byte, which ${step.title} cannot pass on`,
+				`${name} holds a NUL byte, which ${what} cannot pass on`,
 			);
 		return text;
 	};
 
 	return {
-		argv: step.argv.map((arg, i) => value(arg, `argument ${i + 1}`)),
+		argv: argv.map((arg, i) => value(arg, `argument ${i + 1}`)),
 		env: Object.fromEntries(
 			entries.map(([name, arg]) => [name, value(arg, name)]),
 		),
@@ -372,7 +386,7 @@ export async function spawnChild(
 	opts: SpawnOptions = {},
 	gate?: (step: Step) => void,
 ): Promise<ChildHandle> {
-	const values = await resolved(step);
+	const values = await resolved(step, step.title);
 	gate?.(step);
 	const program = shown(step.argv[0] ?? '');
 	const cwd = resolve(opts.root ?? process.cwd(), step.cwd);
@@ -402,7 +416,7 @@ export async function spawnChild(
 			exitCode(proc, code),
 		),
 		kill: signal => {
-			if (opts.detached) process.kill(-proc.pid, signal);
+			if (opts.detached) signalGroup(proc.pid, signal);
 			else proc.kill(signal);
 		},
 		release: () => {
@@ -414,34 +428,86 @@ export async function spawnChild(
 }
 
 /**
- * Runs a read-only check's program with both streams captured, in
- * `cwd` or the working directory, with `env` over the program's.
- * Rejects with `SpawnFailure` for a program that cannot start and
- * `Failure` for a missing directory.
+ * Runs a read-only check's program with both streams captured, its
+ * secrets read at the spawn, in `cwd` or the working directory, with
+ * `env` over the program's. Rejects with `SpawnFailure` for a program
+ * that cannot start, with `Failure` for a missing directory or a value
+ * holding a NUL byte, and with whatever a `resolve()` threw.
  *
  * @public
  */
 export async function capture(
-	argv: readonly string[],
-	{
-		cwd = process.cwd(),
-		env = {},
-		input,
-	}: {
-		readonly cwd?: string;
-		readonly env?: Readonly<Record<string, string>>;
-		/** Text the program reads on stdin; nothing by default. */
-		readonly input?: string;
-	} = {},
+	argv: readonly Arg[],
+	{ cwd, root, env, input }: CaptureOptions = {},
 ): Promise<CaptureResult> {
-	const proc = start({ argv, env }, argv[0] ?? '', cwd, {
-		...QUIET,
-		...(input === undefined ? {} : { stdin: new Blob([input]) }),
-	});
+	const program = shown(argv[0] ?? '');
+	const proc = start(
+		await resolved({ argv, env }, program),
+		program,
+		resolve(root ?? process.cwd(), cwd ?? '.'),
+		{
+			...QUIET,
+			...(input === undefined ? {} : { stdin: new Blob([input]) }),
+		},
+	);
 	const [stdout, stderr, code] = await Promise.all([
 		new Response(pipeOf(proc.stdout)).text(),
 		new Response(pipeOf(proc.stderr)).text(),
 		proc.exited,
 	]);
 	return { code: exitCode(proc, code), stdout, stderr };
+}
+
+/** @public */
+export interface CaptureOrFailOptions extends CaptureOptions {
+	/**
+	 * What the program prints on stderr when the thing it reads does
+	 * not exist, which answers nothing rather than failing.
+	 */
+	readonly absent?: RegExp;
+	/**
+	 * The cause a failure names, from the program's stderr and code;
+	 * stderr's text, else `exit <code>`, by default.
+	 */
+	readonly cause?: (stderr: string, code: number) => string;
+}
+
+const stderrOr = (stderr: string, code: number): string =>
+	stderr.trim() || `exit ${code}`;
+
+/**
+ * A captured program's stdout, untrimmed, when it exits 0. Otherwise a
+ * `Failure` naming the command, its secrets by reference, the `cwd`
+ * when one was given and the cause; under `absent`, a stderr that
+ * matches answers `undefined`, logged at debug with the cause.
+ *
+ * @public
+ */
+export async function captureOrFail(
+	argv: readonly Arg[],
+	opts: CaptureOrFailOptions & { readonly absent: RegExp },
+): Promise<string | undefined>;
+export async function captureOrFail(
+	argv: readonly Arg[],
+	opts?: CaptureOrFailOptions,
+): Promise<string>;
+
+export async function captureOrFail(
+	argv: readonly Arg[],
+	opts: CaptureOrFailOptions = {},
+): Promise<string | undefined> {
+	const { code, stdout, stderr } = await capture(argv, opts);
+	if (code === 0) return stdout;
+	const cause = (opts.cause ?? stderrOr)(stderr, code);
+	const command = commandLine(argv);
+	const at = opts.cwd === undefined ? '' : ` in ${opts.cwd}`;
+	if (opts.absent?.test(stderr)) {
+		log.debug('{command}{at} found nothing: {cause}', {
+			command,
+			at,
+			cause,
+		});
+		return undefined;
+	}
+	throw new Failure(`${command} failed${at}: ${cause}`);
 }
