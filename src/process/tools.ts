@@ -13,7 +13,9 @@ export function findTool(name: string): string | undefined {
  * that needs them stops before its first step.
  */
 export function preflight(names: readonly string[]): void {
-	const missing = names.filter(name => findTool(name) === undefined);
+	const missing = [...new Set(names)].filter(
+		name => findTool(name) === undefined,
+	);
 	if (missing.length === 0) return;
 	throw new Refusal(`missing from PATH: ${missing.join(', ')}`);
 }

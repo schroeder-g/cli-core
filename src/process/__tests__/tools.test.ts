@@ -46,4 +46,11 @@ describe('preflight', () => {
 			'missing from PATH: absent, gone',
 		);
 	});
+
+	test('names a missing program once, however many lists gathered into names name it', () => {
+		expect(
+			refusalOf(['absent', 'present', 'gone', 'absent', 'gone'])
+				.message,
+		).toBe('missing from PATH: absent, gone');
+	});
 });
