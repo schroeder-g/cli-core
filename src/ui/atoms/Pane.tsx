@@ -5,7 +5,11 @@ import type { ReactNode } from 'react';
 export const PANE_FRAME = 4;
 
 /** A rounded, dim frame around `children`, one column of padding inside. */
-export function Pane({ children }: { readonly children: ReactNode }) {
+export function Pane({
+	children,
+}: {
+	readonly children: ReactNode;
+}): ReactNode {
 	return (
 		<Box
 			flexDirection='column'

@@ -1,9 +1,9 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { object, or } from '@optique/core/constructs';
+import { or } from '@optique/core/constructs';
 
-import { commands } from '../core/command.ts';
+import { builders } from '../core/builders.ts';
 import type { CommandParser, Context } from '../core/command.ts';
 import type {
 	Config,
@@ -32,14 +32,16 @@ export function fixtureTree<C extends Context>(
 	first: CommandParser<C>,
 	...rest: readonly CommandParser<C>[]
 ): Program<C> {
-	const { leaf } = commands<C>();
+	const { leaf } = builders<C>();
 	return withGlobals<C>(
 		or(
 			first,
 			...rest,
-			leaf('other', 'Other.', object({}), () =>
-				Promise.resolve({ steps: [] }),
-			),
+			leaf({
+				name: 'other',
+				description: 'Other.',
+				plan: () => ({ steps: [] }),
+			}),
 		),
 	);
 }

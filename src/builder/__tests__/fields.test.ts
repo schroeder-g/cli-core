@@ -16,7 +16,7 @@ import {
 } from '@optique/core/primitives';
 import { choice, integer, string } from '@optique/core/valueparser';
 
-import { commands } from '../../core/command.ts';
+import { builders } from '../../core/builders.ts';
 import type { Context } from '../../core/command.ts';
 import { fixtureTree } from '../../testing/index.ts';
 import {
@@ -31,7 +31,7 @@ import type { Field } from '../fields.ts';
 
 const PORT_DEFAULT = 9000;
 
-const { leaf } = commands<Context>();
+const { leaf } = builders<Context>();
 
 interface Shaped {
 	readonly kind: Field['kind'];
@@ -74,7 +74,14 @@ const GLOBALS: Shaped[] = [
 const nothing = () => Promise.resolve({ steps: [] });
 
 const fx = <M extends Mode, T, S>(parser: Parser<M, T, S>) =>
-	fixtureTree(leaf('fx', 'Fixture.', parser, nothing));
+	fixtureTree(
+		leaf({
+			name: 'fx',
+			description: 'Fixture.',
+			args: parser,
+			plan: nothing,
+		}),
+	);
 
 const program = fx(
 	object({

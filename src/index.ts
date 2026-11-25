@@ -1,5 +1,6 @@
 export * from './core/argv.ts';
 export * from './core/command.ts';
+export { isGroup } from './core/builders.ts';
 export * from './core/confirm.ts';
 export * from './core/errors.ts';
 export * from './core/exit.ts';
@@ -13,5 +14,4 @@ export * from './core/streams.ts';
 export * from './core/text.ts';
 export * from './core/main.ts';
 export * from './core/named-files.ts';
-export * from './core/options.ts';
 export * from './core/graph.ts';

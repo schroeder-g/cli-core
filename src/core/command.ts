@@ -1,16 +1,12 @@
-import { object, or } from '@optique/core/constructs';
 import { message, text } from '@optique/core/message';
-import { map } from '@optique/core/modifiers';
+import type { Message } from '@optique/core/message';
 import type { Mode, Parser } from '@optique/core/parser';
-import { command } from '@optique/core/primitives';
 
-import { Refusal } from './errors.ts';
 import type { Plan } from './plan.ts';
 import type { Streams } from './streams.ts';
 
-// The parsers group() built, so a program can tell a group among its
-// commands from a leaf without reaching into Optique's parsers.
-const GROUPS = new WeakSet<object>();
+/** What cli-core awaits: the value, or a promise of it. */
+export type Awaitable<T> = T | Promise<T>;
 
 /**
  * What every planner and action gets: the run's root, its streams,
@@ -34,21 +30,21 @@ export interface Context extends Streams {
  */
 export interface Action<C extends Context = Context> {
 	describe(root: string): string[];
-	run(ctx: C): Promise<number>;
+	run(ctx: C): Awaitable<number>;
 	readonly readOnly?: boolean;
 }
 
 export type Planner<T, C extends Context = Context> = (
 	value: T,
 	ctx: C,
-) => Promise<Plan<C> | Action<C>>;
+) => Awaitable<Plan<C> | Action<C>>;
 
 /**
  * What a parsed leaf carries: its own planner, so dispatch needs no
  * switch.
  */
 export interface Command<C extends Context = Context> {
-	readonly plan: (ctx: C) => Promise<Plan<C> | Action<C>>;
+	readonly plan: (ctx: C) => Awaitable<Plan<C> | Action<C>>;
 }
 
 /** A leaf or a group: a parser whose value carries a planner. */
@@ -62,11 +58,8 @@ export const isAction = <C extends Context>(
 	result: Plan<C> | Action<C>,
 ): result is Action<C> => 'run' in result;
 
-export const doc = (description: string) =>
+export const doc = (description: string): Message =>
 	message`${text(description)}`;
-
-/** Whether `parser` is a group, which the builder can open at. */
-export const isGroup = (parser: object): boolean => GROUPS.has(parser);
 
 /** A command parser's name: the first term of its usage. */
 export const nameOf = (parser: CommandParser<never>): string => {
@@ -85,69 +78,73 @@ export interface GroupManifest {
 }
 
 /**
- * The command builders over one program's context, bound once so its
- * commands name the context nowhere else.
+ * A leaf as help shows it, `args` parsing what it takes into the value
+ * its planner gets.
  */
-export function commands<C extends Context>() {
-	/** The planner of a leaf whose task has not landed. */
-	const notBuilt: Planner<unknown, C> = () =>
-		Promise.reject(new Refusal('not built yet'));
+export interface LeafSpec<
+	M extends Mode,
+	T,
+	C extends Context = Context,
+> {
+	readonly name: string;
+	readonly description: string;
+	readonly args: Parser<M, T, unknown>;
+	readonly plan: Planner<T, C>;
+}
 
-	function leaf<M extends Mode, T, S>(
-		name: string,
-		description: string,
-		parser: Parser<M, T, S>,
-		plan: Planner<T, C>,
-	) {
-		return command(
-			name,
-			map(parser, (value): Command<C> => ({
-				plan: ctx => plan(value, ctx),
-			})),
-			{ description: doc(description) },
-		);
-	}
+/** A leaf that takes no arguments and no options of its own. */
+export type BareLeafSpec<C extends Context = Context> = Omit<
+	LeafSpec<'sync', Readonly<Record<never, never>>, C>,
+	'args'
+>;
 
-	function group(
-		name: string,
-		description: string,
-		...members: readonly [
-			CommandParser<C>,
-			CommandParser<C>,
-			...CommandParser<C>[],
-		]
-	) {
-		const [first, second, ...rest] = members;
-		const built = command(name, or(first, second, ...rest), {
-			description: doc(description),
-		});
-		GROUPS.add(built);
-		return built;
-	}
+/** A leaf from its spec: a command whose value carries its planner. */
+export interface LeafBuilder<C extends Context> {
+	<M extends Mode, T>(
+		spec: LeafSpec<M, T, C>,
+	): Parser<M, Command<C>, unknown>;
+	(spec: BareLeafSpec<C>): Parser<'sync', Command<C>, unknown>;
+}
 
+/** Two commands or more, as a group holds them, in help's order. */
+export type GroupMembers<C extends Context> = readonly [
+	CommandParser<C>,
+	CommandParser<C>,
+	...CommandParser<C>[],
+];
+
+/**
+ * What a group that is a place, not a list, opens when it is named
+ * alone on a terminal, with no dry run and no help asked: a screen,
+ * answering the run's exit code.
+ */
+export type Screen<C extends Context = Context> = (
+	ctx: C,
+) => Awaitable<number>;
+
+/**
+ * A group: its name, its description, the commands it holds, and the
+ * screen it opens, if it is a place.
+ */
+export interface GroupSpec<C extends Context> {
+	readonly name: string;
+	readonly description: string;
+	readonly commands: GroupMembers<C>;
+	readonly screen?: Screen<C>;
+}
+
+/** The command builders over one program's context. */
+export interface CommandBuilders<C extends Context> {
+	readonly leaf: LeafBuilder<C>;
+	readonly group: (spec: GroupSpec<C>) => CommandParser<C>;
 	/**
-	 * A group of the manifest's shape whose every leaf takes no options
-	 * and plans through `plan`: a stand-in for one loaded later.
+	 * A group of the manifest's shape whose every leaf takes nothing and
+	 * plans through `plan`: a stand-in for one loaded later.
 	 */
-	function lazyGroup(
+	readonly lazyGroup: (
 		manifest: GroupManifest,
 		plan: Planner<unknown, C>,
-	) {
-		const [first, second, ...rest] = Object.entries(
-			manifest.leaves,
-		).map(([name, description]) =>
-			leaf(name, description, object({}), plan),
-		);
-		if (first === undefined || second === undefined)
-			throw new Error(`${manifest.name} names fewer than two leaves`);
-		return group(
-			manifest.name,
-			manifest.description,
-			first,
-			second,
-			...rest,
-		);
-	}
-
-	return { leaf, group, lazyGroup, notBuilt };
+	) => CommandParser<C>;
+	/** The planner of a leaf whose task has not landed. */
+	readonly notBuilt: Planner<unknown, C>;
 }

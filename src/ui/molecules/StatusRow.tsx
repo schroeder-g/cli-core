@@ -32,7 +32,7 @@ export function StatusRow({
 	readonly stateWidth: number;
 	readonly bright: boolean;
 	readonly children: ReactNode;
-}) {
+}): ReactNode {
 	return (
 		<Row
 			on={on}

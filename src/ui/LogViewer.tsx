@@ -1,6 +1,7 @@
 import { Box, Text, useBoxMetrics, useInput, useWindowSize } from 'ink';
 import type { DOMElement, Key } from 'ink';
 import { memo, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import { widthOf } from '../core/text.ts';
 import type { LogFollower, LogLine } from '../process/follower.ts';
@@ -199,7 +200,7 @@ export function LogViewer({
 	backKey,
 	noun = 'log',
 	rules = LOG_RULES,
-}: LogViewerProps) {
+}: LogViewerProps): ReactNode {
 	const leave = useLeave();
 	const snapshot = useStore(logs);
 	const { names, hidden, pattern, regex, problem, visible } = snapshot;

@@ -19,7 +19,8 @@ import { LogFollower } from '../../process/follower.ts';
 import { drive, matching, open, shown } from '../../testing/index.ts';
 import type { Step } from '../../testing/index.ts';
 import type { LogViewerProps } from '../LogViewer.tsx';
-import { presentView } from '../screen.ts';
+import { logViewer, presentView } from '../screen.ts';
+import type { Exit } from '../screen.ts';
 
 const ENTER = '\r';
 
@@ -103,20 +104,19 @@ const view = (
 	drive(
 		open((input, out) => {
 			Object.assign(out, { rows });
-			return presentView<'back', LogViewerProps>(
-				{ stdin: input, stdout: out, stderr: out },
-				'the logs need a terminal',
-				() => import('../LogViewer.tsx'),
-				'LogViewer',
-				exit => ({
+			return presentView({
+				io: { stdin: input, stdout: out, stderr: out },
+				refusal: 'the logs need a terminal',
+				view: logViewer,
+				props: (exit: Exit<'back'>) => ({
 					logs,
 					title: 'nt logs',
 					sub: 'every run',
 					onBack: () => exit.done('back'),
 					...props,
 				}),
-				{ from: 'the list' },
-			);
+				from: 'the list',
+			});
 		}),
 		steps,
 	);

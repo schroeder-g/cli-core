@@ -15,6 +15,8 @@ const CONFIG_FILE = 'config.toml';
 
 export type { ConfigContext, ConfigMeta } from '@optique/config';
 
+export { z } from 'zod';
+
 export * from './xdg.ts';
 
 type Table = Record<string, unknown>;
@@ -130,7 +132,12 @@ export function defineConfig<
 	T,
 	I,
 	V extends Readonly<Record<string, Variable<I>>>,
->({ name, envPrefix, schema, variables }: ConfigSpec<T, I, V>) {
+>({
+	name,
+	envPrefix,
+	schema,
+	variables,
+}: ConfigSpec<T, I, V>): DefinedConfig<T, V> {
 	const defaults: T = schema.parse({});
 	const context = createConfigContext({ schema });
 
@@ -217,11 +224,6 @@ export function defineConfig<
 		};
 	};
 
-	/**
-	 * A flag that also lives in the config: the flag, else the config's
-	 * key, which its variable has already overlaid, else the schema's
-	 * default for it, which help shows.
-	 */
 	function configured<M extends Mode, U, S>(
 		option: Parser<M, U, S>,
 		key: (config: T) => U,
@@ -241,4 +243,22 @@ export interface Config<T> {
 	readonly defaults: T;
 	readonly context: ConfigContext<T>;
 	readonly load: (path?: string, env?: Environment) => LoadedConfig<T>;
+}
+
+/**
+ * What `defineConfig` answers: the runner's `Config`, where each
+ * variable lands, and the flags that also live in the config.
+ */
+export interface DefinedConfig<T, V> extends Config<T> {
+	/** The file's key the variable `key` writes, and its full name. */
+	readonly sourceOf: (key: keyof V & string) => Source;
+	/**
+	 * A flag that also lives in the config: the flag, else the config's
+	 * key, which its variable has already overlaid, else the schema's
+	 * default for it, which help shows.
+	 */
+	readonly configured: <M extends Mode, U, S>(
+		option: Parser<M, U, S>,
+		key: (config: T) => U,
+	) => Parser<M, U, S>;
 }

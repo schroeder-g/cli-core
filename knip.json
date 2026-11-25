@@ -3,6 +3,7 @@
 	"ignoreExportsUsedInFile": false,
 	"entry": [
 		"src/index.ts",
+		"src/args/index.ts",
 		"src/builder/index.ts",
 		"src/core/config.ts",
 		"src/process/index.ts",

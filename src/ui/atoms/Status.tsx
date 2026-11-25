@@ -1,4 +1,5 @@
 import { Text } from 'ink';
+import type { ReactNode } from 'react';
 
 import { LOOKS } from '../glyphs.ts';
 import type { Tone } from '../glyphs.ts';
@@ -12,7 +13,7 @@ export function Status({
 	readonly tone: Tone;
 	readonly label: string;
 	readonly width?: number;
-}) {
+}): ReactNode {
 	const { glyph, color } = LOOKS[tone];
 	return <Text color={color}>{`${glyph} ${label.padEnd(width)}`}</Text>;
 }

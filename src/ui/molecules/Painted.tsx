@@ -1,4 +1,5 @@
 import { Text } from 'ink';
+import type { ReactNode } from 'react';
 
 import type { Segment } from '../paint.ts';
 
@@ -9,7 +10,7 @@ export function Painted({
 }: {
 	readonly segments: readonly Segment[];
 	readonly wrap?: 'wrap' | 'truncate-end';
-}) {
+}): ReactNode {
 	return (
 		<Text wrap={wrap}>
 			{segments.map(({ text, style }, at) => (

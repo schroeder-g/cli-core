@@ -1,9 +1,9 @@
 import { Refusal } from '../core/errors.ts';
 import type { Streams } from '../core/streams.ts';
 import { presentView } from '../ui/screen.ts';
+import type { Exit } from '../ui/screen.ts';
 import { place } from './fields.ts';
 import type { AnyParser } from './fields.ts';
-import type { BuilderProps } from './provider.tsx';
 
 export * from './fields.ts';
 
@@ -42,18 +42,18 @@ export async function openBuilder(
 	io: Streams,
 ): Promise<string[] | undefined> {
 	await assertGroup(program, path);
-	return presentView<string[] | undefined, BuilderProps>(
+	return presentView({
 		io,
-		'the builder needs a terminal; write the command and its options instead',
-		() => import('./App.tsx'),
-		'Builder',
-		exit => ({
+		refusal:
+			'the builder needs a terminal; write the command and its options instead',
+		view: () => import('./App.tsx').then(module => module.Builder),
+		props: (exit: Exit<string[] | undefined>) => ({
 			name,
 			program,
 			path,
 			onDone: argv => exit.done(argv),
 			onError: error => exit.fail(error),
 		}),
-		{ onStderr: true },
-	);
+		onStderr: true,
+	});
 }

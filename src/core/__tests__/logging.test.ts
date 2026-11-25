@@ -1,9 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
-import { object } from '@optique/core/constructs';
-
 import { fixtureTree } from '../../testing/index.ts';
-import { commands } from '../command.ts';
+import { builders } from '../builders.ts';
 import type { Context } from '../command.ts';
 import { Refusal } from '../errors.ts';
 import { log } from '../logging.ts';
@@ -18,19 +16,29 @@ const FLAGS: Record<string, string[]> = {
 	'-vv': ['-vv'],
 };
 
-const { leaf } = commands<Context>();
+const { leaf } = builders<Context>();
 
 const program = fixtureTree(
-	leaf('speak', 'Logs at every level.', object({}), () => {
-		for (const level of LEVELS) log[level](`${level} line`);
-		return Promise.resolve({ steps: [] });
+	leaf({
+		name: 'speak',
+		description: 'Logs at every level.',
+		plan: () => {
+			for (const level of LEVELS) log[level](`${level} line`);
+			return Promise.resolve({ steps: [] });
+		},
 	}),
-	leaf('refuse', 'Refuses.', object({}), () =>
-		Promise.reject(new Refusal('no, thanks')),
-	),
-	leaf('control', 'Logs a control character.', object({}), () => {
-		log.error('path\u001b[31m[0m\u0007');
-		return Promise.resolve({ steps: [] });
+	leaf({
+		name: 'refuse',
+		description: 'Refuses.',
+		plan: () => Promise.reject(new Refusal('no, thanks')),
+	}),
+	leaf({
+		name: 'control',
+		description: 'Logs a control character.',
+		plan: () => {
+			log.error('path\u001b[31m[0m\u0007');
+			return Promise.resolve({ steps: [] });
+		},
 	}),
 );
 

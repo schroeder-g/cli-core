@@ -1,10 +1,8 @@
 import { describe, expect, mock, test } from 'bun:test';
 import { tmpdir } from 'node:os';
 
-import { object } from '@optique/core/constructs';
-
 import { fixtureTree, stdin, terminal } from '../../testing/index.ts';
-import { commands } from '../command.ts';
+import { builders } from '../builders.ts';
 import type { Action, Context } from '../command.ts';
 import { Failure } from '../errors.ts';
 import type { Plan, Secret } from '../plan.ts';
@@ -13,7 +11,7 @@ import { run } from './fixture.ts';
 
 const SECRET_VALUE = 'hunter2';
 
-const { leaf } = commands<Context>();
+const { leaf } = builders<Context>();
 
 const resolveSecret = mock(() => Promise.resolve(SECRET_VALUE));
 
@@ -55,26 +53,40 @@ const action = (log: string[], readOnly?: boolean): Action => ({
 
 const fixtures = (ran: string[]) =>
 	fixtureTree(
-		leaf('fx', 'Fixture.', object({}), (_value, ctx) =>
-			Promise.resolve(plan(ctx.root)),
-		),
-		leaf('act', 'Acts.', object({}), () =>
-			Promise.resolve(action(ran)),
-		),
-		leaf('peek', 'Reads.', object({}), () =>
-			Promise.resolve(action(ran, true)),
-		),
-		leaf('fail', 'Fails.', object({}), () =>
-			Promise.reject(new Failure('busy port')),
-		),
-		leaf('boom', 'Throws.', object({}), () =>
-			Promise.reject(new TypeError('boom')),
-		),
-		leaf('ask', 'Asks twice.', object({}), async (_value, ctx) => {
-			const first = await ctx.prompt('first? ');
-			const second = await ctx.prompt('second? ');
-			ctx.stdout.write(`${first}+${second}\n`);
-			return { steps: [] };
+		leaf({
+			name: 'fx',
+			description: 'Fixture.',
+			plan: (_value, ctx) => Promise.resolve(plan(ctx.root)),
+		}),
+		leaf({
+			name: 'act',
+			description: 'Acts.',
+			plan: () => Promise.resolve(action(ran)),
+		}),
+		leaf({
+			name: 'peek',
+			description: 'Reads.',
+			plan: () => Promise.resolve(action(ran, true)),
+		}),
+		leaf({
+			name: 'fail',
+			description: 'Fails.',
+			plan: () => Promise.reject(new Failure('busy port')),
+		}),
+		leaf({
+			name: 'boom',
+			description: 'Throws.',
+			plan: () => Promise.reject(new TypeError('boom')),
+		}),
+		leaf({
+			name: 'ask',
+			description: 'Asks twice.',
+			plan: async (_value, ctx) => {
+				const first = await ctx.prompt('first? ');
+				const second = await ctx.prompt('second? ');
+				ctx.stdout.write(`${first}+${second}\n`);
+				return { steps: [] };
+			},
 		}),
 	);
 

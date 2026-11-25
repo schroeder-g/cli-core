@@ -1,4 +1,5 @@
 import { Text, Transform } from 'ink';
+import type { ReactNode } from 'react';
 
 import { hyperlink } from '../hyperlink.ts';
 
@@ -16,7 +17,7 @@ export function Link({
 }: {
 	readonly label: string;
 	readonly url: string;
-}) {
+}): ReactNode {
 	return (
 		<Transform transform={line => hyperlink(line, url)}>
 			<Text

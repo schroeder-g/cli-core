@@ -8,6 +8,11 @@ import type {
 	OutputStream,
 	Streams,
 } from '../core/streams.ts';
+import type {
+	ChecklistItem,
+	ChecklistViewProps,
+} from './ChecklistView.tsx';
+import type { LogViewerProps } from './LogViewer.tsx';
 import {
 	MOUSE_OFF,
 	MOUSE_ON,
@@ -135,7 +140,7 @@ export function assertTerminal(
  * for them. Ctrl-C hands the terminal back and re-raises the interrupt,
  * so the shell sees it as one.
  */
-async function present<T>(
+async function draw<T>(
 	io: Terminal,
 	refusal: string,
 	open: (exit: Exit<T>) => Promise<ReactElement>,
@@ -241,34 +246,53 @@ export interface ScreenOptions {
 }
 
 /**
- * Draws a view loaded on demand inside the screen frame: `load` imports
- * the module holding the component named `name`, and `props` builds its
- * props from the exit the view ends through. Ink, React and the view
- * load only here.
+ * A view's component, loaded when its screen opens, so a run that
+ * opens none never loads it, Ink or React.
  */
-export async function presentView<T, P extends object>(
-	io: Streams,
-	refusal: string,
-	load: () => Promise<Record<string, unknown>>,
-	name: string,
-	props: (exit: Exit<T>) => P,
-	{
-		from,
-		presentation = from === undefined ? {} : WHOLE_SCREEN,
-		onStderr = false,
-	}: ScreenOptions = {},
-): Promise<T | undefined> {
-	return present<T>(
+export type LazyView<P> = () => Promise<ComponentType<P>>;
+
+/**
+ * What a screen draws a view with: the run's streams, the refusal a
+ * stdin that is no terminal gets, and the view's props built over the
+ * exit it ends through.
+ */
+export interface Presenting<T, P> extends ScreenOptions {
+	readonly io: Streams;
+	readonly refusal: string;
+	readonly props: (exit: Exit<T>) => P;
+}
+
+/** A view to draw, its props those of the component `view` loads. */
+export interface ViewSpec<T, P> extends Presenting<T, NoInfer<P>> {
+	readonly view: LazyView<P>;
+}
+
+/**
+ * Draws the view `view` loads inside the screen frame until it ends,
+ * and answers the value it ended with through `exit.done`, or
+ * `undefined` on an interrupt or when the input ended first. Ink, React
+ * and the view load only here. `T` comes from where the answer goes,
+ * or from the `exit` parameter's type when nothing names it there.
+ */
+export async function presentView<T, P extends object>({
+	io,
+	refusal,
+	view,
+	props,
+	from,
+	presentation = from === undefined ? {} : WHOLE_SCREEN,
+	onStderr = false,
+}: ViewSpec<T, P>): Promise<T | undefined> {
+	return draw<T>(
 		{ stdin: io.stdin, screen: onStderr ? io.stderr : io.stdout },
 		refusal,
 		async exit => {
-			const [{ createElement }, { ScreenFrame }, loaded] =
+			const [{ createElement }, { ScreenFrame }, component] =
 				await Promise.all([
 					import('react'),
 					import('./ScreenFrame.tsx'),
-					load(),
+					view(),
 				]);
-			const component = loaded[name] as ComponentType<P>;
 			return createElement(ScreenFrame, {
 				from,
 				onInterrupt: () => exit.interrupt(),
@@ -278,3 +302,60 @@ export async function presentView<T, P extends object>(
 		presentation,
 	);
 }
+
+/**
+ * cli-core's checklist screen, `ChecklistView`, as a view to present.
+ * `checklistView<I>` types its items as a program's own.
+ */
+export function checklistView<I extends ChecklistItem>(): Promise<
+	ComponentType<ChecklistViewProps<I>>
+>;
+
+// Inference reads the last signature, so a view named with no type
+// argument takes plain items rather than an unresolved `I`.
+export function checklistView(): Promise<
+	ComponentType<ChecklistViewProps<ChecklistItem>>
+>;
+
+export function checklistView(): Promise<
+	ComponentType<ChecklistViewProps<ChecklistItem>>
+> {
+	return import('./ChecklistView.tsx').then(
+		module => module.ChecklistView,
+	);
+}
+
+/** cli-core's log viewer, `LogViewer`, as a view to present. */
+export const logViewer: LazyView<LogViewerProps> = () =>
+	import('./LogViewer.tsx').then(module => module.LogViewer);
+
+/** Views by name, each loaded when a screen presents it by its name. */
+export type Views = Readonly<Record<string, LazyView<never>>>;
+
+/** The props of the component the lazy view `V` loads. */
+export type PropsOf<V> =
+	V extends LazyView<infer P extends object> ? P : never;
+
+/** cli-core's own views, by the names a program presents them by. */
+export interface CoreViews {
+	readonly checklistView: LazyView<ChecklistViewProps<ChecklistItem>>;
+	readonly logViewer: LazyView<LogViewerProps>;
+}
+
+/** A view of the registry `V` to draw, by its name. */
+export interface NamedViewSpec<
+	V extends Views,
+	K extends keyof V,
+	T,
+> extends Presenting<T, PropsOf<V[K]>> {
+	readonly view: K;
+}
+
+/**
+ * Draws a view of the registry `V` by its name, as `presentView` draws
+ * a view it is handed, its props checked against that view's
+ * component.
+ */
+export type Present<V extends Views> = <K extends keyof V & string, T>(
+	spec: NamedViewSpec<V, K, T>,
+) => Promise<T | undefined>;

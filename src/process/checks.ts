@@ -7,6 +7,7 @@ import {
 } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
+import type { Awaitable } from '../core/command.ts';
 import { FAILED } from '../core/exit.ts';
 import type { OutputStream } from '../core/streams.ts';
 import { lineWriter } from '../core/streams.ts';
@@ -34,7 +35,7 @@ export type CheckOutcome =
 /** One named, independent probe, one line of a report. */
 export interface Check {
 	readonly name: string;
-	run(): Promise<CheckOutcome>;
+	run(): Awaitable<CheckOutcome>;
 }
 
 /**
@@ -63,7 +64,7 @@ type Settled<R> =
  */
 export async function allInOrder<T, R>(
 	items: readonly T[],
-	run: (item: T) => Promise<R>,
+	run: (item: T) => Awaitable<R>,
 	each: (result: R, item: T) => void,
 ): Promise<void> {
 	const settled = items.map(async (item): Promise<Settled<R>> => {

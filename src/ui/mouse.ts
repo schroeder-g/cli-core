@@ -60,10 +60,15 @@ export function splitReports(text: string): {
 
 type Listener = (report: MouseReport) => void;
 
+interface MouseReports {
+	subscribe(listener: Listener): () => void;
+	emit(report: MouseReport): void;
+}
+
 const listeners = new Set<Listener>();
 
 /** The reports of the screen presented now, for its views to read. */
-export const mouseReports = {
+export const mouseReports: MouseReports = {
 	subscribe(listener: Listener): () => void {
 		listeners.add(listener);
 		return () => {

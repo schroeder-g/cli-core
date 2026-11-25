@@ -3,7 +3,12 @@ import {
 	getLogger,
 	getTextFormatter,
 } from '@logtape/logtape';
-import type { LogLevel, LogRecord, Sink } from '@logtape/logtape';
+import type {
+	Logger,
+	LogLevel,
+	LogRecord,
+	Sink,
+} from '@logtape/logtape';
 
 import { lineWriter } from './streams.ts';
 import { visibleText } from './text.ts';
@@ -14,7 +19,7 @@ const META_CATEGORY = ['logtape', 'meta'];
 
 export type { Logger, LogLevel } from '@logtape/logtape';
 
-export const log = getLogger(CATEGORY);
+export const log: Logger = getLogger(CATEGORY);
 
 const format = getTextFormatter({
 	timestamp: 'none',

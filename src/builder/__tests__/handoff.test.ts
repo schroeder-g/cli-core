@@ -6,7 +6,7 @@ import { argument, flag, option } from '@optique/core/primitives';
 import { choice, string } from '@optique/core/valueparser';
 
 import { run as runFixture } from '../../core/__tests__/fixture.ts';
-import { commands } from '../../core/command.ts';
+import { builders } from '../../core/builders.ts';
 import type { Context } from '../../core/command.ts';
 import type { InputStream } from '../../core/streams.ts';
 import {
@@ -30,13 +30,13 @@ const ESCAPE = '\u001b';
 
 const POLL_MS = 15;
 
-const { leaf } = commands<Context>();
+const { leaf } = builders<Context>();
 
 const program = fixtureTree(
-	leaf(
-		'fx',
-		'Fixture.',
-		object({
+	leaf({
+		name: 'fx',
+		description: 'Fixture.',
+		args: object({
 			mode: option(
 				'--mode',
 				choice(['fast', 'slow'], { metavar: 'MODE' }),
@@ -45,7 +45,7 @@ const program = fixtureTree(
 			force: optional(flag('--force')),
 			rest: multiple(argument(string({ metavar: 'REST' }))),
 		}),
-		(value, ctx) =>
+		plan: (value, ctx) =>
 			Promise.resolve({
 				steps: [
 					{
@@ -61,7 +61,7 @@ const program = fixtureTree(
 					},
 				],
 			}),
-	),
+	}),
 );
 
 const run = (argv: string[]) => runFixture(argv, { program });

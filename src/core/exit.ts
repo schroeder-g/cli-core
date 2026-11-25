@@ -26,7 +26,7 @@ export const signalExit = (signal: NodeJS.Signals): number =>
 	SIGNAL_EXIT_BASE + os.signals[signal];
 
 /** A run an interrupt ended. */
-export const INTERRUPTED = signalExit('SIGINT');
+export const INTERRUPTED: number = signalExit('SIGINT');
 
 /**
  * A refusal exits 2, a failure 1 with its message, anything else 1
