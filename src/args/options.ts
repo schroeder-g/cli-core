@@ -1,6 +1,7 @@
 import { message, text, valueSet } from '@optique/core/message';
 import type { Message } from '@optique/core/message';
 import { map, multiple } from '@optique/core/modifiers';
+import type { FluentParser } from '@optique/core/modifiers';
 import { option } from '@optique/core/primitives';
 import type { NonEmptyString } from '@optique/core/nonempty';
 import type { OptionName } from '@optique/core/usage';
@@ -184,7 +185,11 @@ export const names = (
 	flags: readonly [OptionName, ...OptionName[]],
 	known: KnownNames,
 	{ description, ...list }: NamesOptions,
-) =>
+): FluentParser<
+	'sync',
+	readonly string[] | undefined,
+	readonly (ValueParserResult<readonly string[]> | undefined)[]
+> =>
 	map(
 		multiple(option(...flags, nameList(known, list), { description })),
 		(lists): readonly string[] | undefined =>

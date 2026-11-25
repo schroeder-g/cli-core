@@ -7,6 +7,7 @@ import {
 	optional,
 	withDefault,
 } from '@optique/core/modifiers';
+import type { FluentParser } from '@optique/core/modifiers';
 import type { Mode, Parser } from '@optique/core/parser';
 import {
 	argument,
@@ -148,6 +149,13 @@ type BuilderRequest = {
 	readonly builder: readonly string[];
 };
 
+/** What the globals parse to, beside the leaf or the builder request. */
+type Globals = {
+	readonly dryRun: boolean;
+	readonly config: string | undefined;
+	readonly level: LogLevel;
+};
+
 const globals = object({
 	dryRun: option(DRY_RUN_OPTION, {
 		description: doc('Print what would run and run nothing.'),
@@ -180,13 +188,15 @@ const globals = object({
  */
 export function withGlobals<C extends Context>(
 	tree: Parser<Mode, Command<C> | BuilderRequest, unknown>,
-) {
+): Program<C> {
 	return merge(globals, tree);
 }
 
 /** @public */
-export type Program<C extends Context> = ReturnType<
-	typeof withGlobals<C>
+export type Program<C extends Context> = FluentParser<
+	'async',
+	Globals & (Command<C> | BuilderRequest),
+	Record<string | symbol, unknown>
 >;
 
 const isLazy = <C extends Context>(

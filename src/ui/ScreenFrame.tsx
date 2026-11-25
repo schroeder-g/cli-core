@@ -15,7 +15,7 @@ export function ScreenFrame({
 	readonly from: string | undefined;
 	readonly onInterrupt: () => void;
 	readonly children: ReactNode;
-}) {
+}): ReactNode {
 	useInput((input, key) => {
 		if (isInterrupt(input, key)) onInterrupt();
 	});

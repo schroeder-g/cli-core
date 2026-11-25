@@ -51,7 +51,7 @@ export function Row({
 	readonly kind?: string;
 	readonly kindWidth?: number;
 	readonly children?: ReactNode;
-}) {
+}): ReactNode {
 	return (
 		<Box>
 			<Box flexShrink={0}>

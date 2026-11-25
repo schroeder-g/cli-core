@@ -15,7 +15,7 @@ export function Labeled({
 	readonly width: number;
 	readonly dim?: boolean;
 	readonly children: ReactNode;
-}) {
+}): ReactNode {
 	return (
 		<Box>
 			<Box

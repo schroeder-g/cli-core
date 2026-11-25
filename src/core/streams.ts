@@ -16,6 +16,8 @@ export interface Streams {
 /** Where forwarded output goes and what the terminal rule reads. */
 export type OutputStreams = Pick<Streams, 'stdout' | 'stderr'>;
 
-export const lineWriter = (stream: OutputStream) => (line: string) => {
-	stream.write(`${line}\n`);
-};
+export const lineWriter =
+	(stream: OutputStream): ((line: string) => void) =>
+	line => {
+		stream.write(`${line}\n`);
+	};

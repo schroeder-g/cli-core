@@ -62,7 +62,7 @@ export function ChecklistView<I extends ChecklistItem>({
 	status,
 	empty,
 	...screen
-}: ChecklistViewProps<I>) {
+}: ChecklistViewProps<I>): ReactNode {
 	const leave = useLeave();
 	const { index, has, notice } = useChecklistScreen(
 		items.map(item => item.name),

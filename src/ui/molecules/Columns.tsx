@@ -1,5 +1,6 @@
 import { chunk } from 'es-toolkit/array';
 import { Text } from 'ink';
+import type { ReactNode } from 'react';
 
 import { widthOf } from '../../core/text.ts';
 
@@ -17,7 +18,7 @@ export function Columns({
 	readonly width: number;
 	readonly gap?: number;
 	readonly none?: string;
-}) {
+}): ReactNode {
 	if (names.length === 0) return <Text>{none}</Text>;
 	const cell = widthOf(names, name => name) + gap;
 	const across = Math.max(1, Math.floor((width + gap) / cell));
