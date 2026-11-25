@@ -42,7 +42,7 @@ import {
 	VERBOSE_SHORT,
 } from './argv.ts';
 import type { ArgvReader } from './argv.ts';
-import { builders, isGroup } from './builders.ts';
+import { builders, isGroup, screenAt } from './builders.ts';
 import { doc, isAction, nameOf } from './command.ts';
 import type {
 	Awaitable,
@@ -51,6 +51,7 @@ import type {
 	CommandParser,
 	Context,
 	GroupManifest,
+	Screen,
 } from './command.ts';
 import type { Config, LoadedConfig } from './config.ts';
 import { Failure } from './errors.ts';
@@ -75,15 +76,6 @@ export interface LazyGroup<C extends Context> {
 	readonly load: () => Awaitable<CommandParser<C>>;
 }
 
-/**
- * A group that is a place, not a list: named alone on a terminal, with
- * no dry run and no help asked, it opens a screen.
- */
-export interface Screen<C extends Context> {
-	readonly group: string;
-	open(ctx: C): Awaitable<number>;
-}
-
 /** What one run sets up, once its config is known to the loader. */
 export interface Session<C extends Context> {
 	/** Sources beside the config's, registered unless help is asked. */
@@ -105,7 +97,6 @@ export interface ProgramSpec<C extends Context, T> {
 	 * place.
 	 */
 	readonly commands: readonly (CommandParser<C> | LazyGroup<C>)[];
-	readonly screens?: readonly Screen<C>[];
 	/** The leaf that opens the builder. */
 	readonly builder?: string;
 	/**
@@ -252,30 +243,41 @@ export interface DefinedProgram<C extends Context, T> {
 	readonly groupNames: readonly string[];
 }
 
+/** The tree a run parses, and the top-level commands it holds. */
+interface Loaded<C extends Context> {
+	readonly program: Program<C>;
+	readonly commands: readonly CommandParser<C>[];
+}
+
 /** A program's spec with what its runs share. */
 interface Compiled<C extends Context, T> {
 	readonly spec: ProgramSpec<C, T>;
 	readonly config: Config<T>;
 	/** The argv as the placeholders read it, before any group loads. */
 	readonly reader: ArgvReader;
+	/** The top-level commands, each lazy group a placeholder. */
+	readonly commands: readonly CommandParser<C>[];
 	/** The tree for `argv`, each lazy group it needs loaded. */
 	readonly load: (
 		argv: readonly string[],
 		ttyIn: boolean,
-	) => Promise<Program<C>>;
+	) => Promise<Loaded<C>>;
 }
 
-/** The screen `argv` opens: its group alone, no listing asked. */
-const screenOf = <C extends Context, T>(
-	spec: ProgramSpec<C, T>,
+/**
+ * The screen `argv` opens: that of the group its words name alone, at
+ * any depth, with no dry run and no listing asked.
+ */
+const screenOf = <C extends Context>(
+	commands: readonly CommandParser<C>[],
 	read: ArgvReader,
 	argv: readonly string[],
 	path: readonly string[],
 ): Screen<C> | undefined =>
-	path.length === 1
+	path.length > 0
 	&& !read.optionTokens(argv).includes(DRY_RUN_OPTION)
 	&& !read.wantsHelp(argv)
-		? spec.screens?.find(screen => screen.group === path[0])
+		? screenAt(commands, path)
 		: undefined;
 
 /**
@@ -287,12 +289,12 @@ async function runWith<C extends Context, T>(
 	argv: readonly string[],
 	opts: RunProgramOptions<C, T>,
 	reentered?: {
-		readonly program: Program<C>;
+		readonly loaded: Loaded<C>;
 		readonly session: Session<C>;
 		readonly root: () => string;
 	},
 ): Promise<number> {
-	const { spec, config, reader, load } = compiled;
+	const { spec, config, reader, commands, load } = compiled;
 	const stdin = opts.stdin ?? process.stdin;
 	const stdout = opts.stdout ?? process.stdout;
 	const stderr = opts.stderr ?? process.stderr;
@@ -361,23 +363,28 @@ async function runWith<C extends Context, T>(
 	// the program and the session this run already has. A context the
 	// run cannot build refuses before the form opens.
 	const reenter = async (
-		program: Program<C>,
+		loaded: Loaded<C>,
 		read: ArgvReader,
 		path: readonly string[],
 	) => {
 		contextOf(false);
-		const assembled = await openBuilder(spec.name, program, [...path], {
-			stdin,
-			stdout,
-			stderr,
-		});
+		const assembled = await openBuilder(
+			spec.name,
+			loaded.program,
+			[...path],
+			{
+				stdin,
+				stdout,
+				stderr,
+			},
+		);
 		if (assembled === undefined) return 0;
 		return runWith(
 			compiled,
 			[...read.optionTokens(argv), ...assembled],
 			opts,
 			{
-				program,
+				loaded,
 				session,
 				root,
 			},
@@ -459,27 +466,33 @@ async function runWith<C extends Context, T>(
 	const level = levelFromArgv(argv);
 	await configureLogging(level, writeErr);
 	try {
-		const program =
-			reentered?.program ?? opts.program ?? (await load(argv, ttyIn));
+		const loaded =
+			reentered?.loaded
+			?? (opts.program === undefined
+				? await load(argv, ttyIn)
+				: { program: opts.program, commands });
+		const { program } = loaded;
 		// The tree this run parses, its loaded groups' options included.
 		const read = argvReader(valuedOptions(program.usage));
 		if (read.bare(argv))
 			return ttyIn
-				? await reenter(program, read, [])
+				? await reenter(loaded, read, [])
 				: await usage(program, []);
 		const placed = await place(program, read.words(argv));
 		const path = read.plainWords(argv);
-		const screen = ttyIn ? screenOf(spec, read, argv, path) : undefined;
+		const screen = ttyIn
+			? screenOf(loaded.commands, read, argv, path)
+			: undefined;
 		if (screen !== undefined) {
 			loadConfig({ config: configFromArgv(argv) });
-			return await screen.open(contextOf(false));
+			return await screen(contextOf(false));
 		}
 		if (namesGroup(placed, path)) return await usage(program, path);
 		const value = await parse(program, placed.path);
 		if (value.level !== level)
 			await configureLogging(value.level, writeErr);
 		if ('builder' in value)
-			return await reenter(program, read, value.builder);
+			return await reenter(loaded, read, value.builder);
 		const ctx = contextOf(value.dryRun);
 		const result = await value.plan(ctx);
 		if (isAction(result)) {
@@ -530,7 +543,9 @@ function defineProgram<C extends Context, T>(
 				: member,
 		);
 
-	const groupNames = resolveAll(new Map()).filter(isGroup).map(nameOf);
+	const commands = resolveAll(new Map());
+
+	const groupNames = commands.filter(isGroup).map(nameOf);
 
 	const builder = command(
 		builderLeaf,
@@ -573,20 +588,22 @@ function defineProgram<C extends Context, T>(
 		const wanted = spec.commands
 			.filter(isLazy)
 			.filter(group => needs(argv, group.manifest.name, ttyIn));
-		const loaded = await Promise.all(
-			wanted.map(async group => {
-				log.debug('loading {group}', { group: group.manifest.name });
-				return [group, await group.load()] as const;
-			}),
+		const loaded = new Map(
+			await Promise.all(
+				wanted.map(async group => {
+					log.debug('loading {group}', { group: group.manifest.name });
+					return [group, await group.load()] as const;
+				}),
+			),
 		);
-		return build(new Map(loaded));
+		return { program: build(loaded), commands: resolveAll(loaded) };
 	};
 
 	const run = (
 		argv: readonly string[],
 		opts: RunProgramOptions<C, T> = {},
 	): Promise<number> =>
-		runWith({ spec, config, reader, load }, argv, opts);
+		runWith({ spec, config, reader, commands, load }, argv, opts);
 
 	return { build, run, needs, reader, groupNames };
 }

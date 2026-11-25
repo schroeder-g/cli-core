@@ -94,9 +94,9 @@ const nt = program({
 			name: 'notes',
 			description: 'Keep notes.',
 			commands: [add, list],
+			screen: tick,
 		}),
 	],
-	screens: [{ group: 'notes', open: tick }],
 	session: run => ({
 		context: base => ({ ...base, file: run.config().file }),
 	}),

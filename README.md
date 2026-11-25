@@ -111,9 +111,9 @@ const nt = program({
 			name: 'notes',
 			description: 'Keep notes.',
 			commands: [add, list],
+			screen: tick,
 		}),
 	],
-	screens: [{ group: 'notes', open: tick }],
 	session: run => ({
 		context: base => ({ ...base, file: run.config().file }),
 	}),
@@ -126,7 +126,7 @@ await runMain(nt.run);
 
 `runMain` hands the program the arguments after the script's and makes the code it answers the process's, through `process.exitCode`, so what the program wrote drains before the process exits. A reader that closes early, `nt notes list | head -1`, ends the process quietly with 0. The shebang's `--env-file=/dev/null` keeps Bun from loading the working directory's `.env` into the program, which every child it spawns would inherit.
 
-`nt notes add 'a note'` runs the step, `nt --dry-run notes add 'a note'` prints it, and `nt i notes` builds the command interactively. `nt notes` alone on a terminal opens the notes as a checklist, cli-core's `ChecklistView`; Enter clears the ticked ones. `present` draws a view by its name, here cli-core's `checklistView`, loading it only when the screen opens, and checks `props`, built over the `exit` the view ends through, against that view's component. A program registers its own views beside its config, `commands(config, { views: { notes: () => import('./Notes.tsx').then(module => module.Notes) } })`, and presents them by name the same way; `presentView` from `/screen` draws a view handed to it as such a closure, for code outside a program. The config is read from `$XDG_CONFIG_HOME/nt/config.toml` (or `~/.config/nt/config.toml`, or the file `--config` names), and `NT_FILE` overrides its `file`.
+`nt notes add 'a note'` runs the step, `nt --dry-run notes add 'a note'` prints it, and `nt i notes` builds the command interactively. `nt notes` alone on a terminal opens the group's `screen`, the notes as a checklist, cli-core's `ChecklistView`; Enter clears the ticked ones. A group's screen opens when its words are the whole command line, at any depth, and not under `--dry-run` or a help request, which list the group instead. `present` draws a view by its name, here cli-core's `checklistView`, loading it only when the screen opens, and checks `props`, built over the `exit` the view ends through, against that view's component. A program registers its own views beside its config, `commands(config, { views: { notes: () => import('./Notes.tsx').then(module => module.Notes) } })`, and presents them by name the same way; `presentView` from `/screen` draws a view handed to it as such a closure, for code outside a program. The config is read from `$XDG_CONFIG_HOME/nt/config.toml` (or `~/.config/nt/config.toml`, or the file `--config` names), and `NT_FILE` overrides its `file`.
 
 ## Entry points
 

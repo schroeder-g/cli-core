@@ -65,6 +65,15 @@ export const nt = program({
 			name: 'notes',
 			description: 'Keep notes.',
 			commands: [add, list],
+			screen: async ctx => {
+				await present({
+					io: ctx,
+					refusal: 'nt notes needs a terminal.',
+					view: 'notes',
+					props: (exit: Exit<void>) => ({ onDone: () => exit.done() }),
+				});
+				return 0;
+			},
 		}),
 		{
 			manifest: {
@@ -96,20 +105,6 @@ export const nt = program({
 						],
 					}),
 				),
-		},
-	],
-	screens: [
-		{
-			group: 'notes',
-			open: async ctx => {
-				await present({
-					io: ctx,
-					refusal: 'nt notes needs a terminal.',
-					view: 'notes',
-					props: (exit: Exit<void>) => ({ onDone: () => exit.done() }),
-				});
-				return 0;
-			},
 		},
 	],
 	session: run => ({

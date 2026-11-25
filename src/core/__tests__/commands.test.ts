@@ -70,9 +70,36 @@ const open = leaf({
 	}),
 });
 
+const loud = group({
+	name: 'loud',
+	description: 'Say things loudly.',
+	commands: [
+		leaf({
+			name: 'shout',
+			description: 'Shout.',
+			plan: () => ({ steps: [] }),
+		}),
+		leaf({
+			name: 'roar',
+			description: 'Roar.',
+			plan: () => ({ steps: [] }),
+		}),
+	],
+	screen: ctx => {
+		ctx.stdout.write(
+			`${ctx.greeting.toUpperCase()} from the loud screen\n`,
+		);
+		return 0;
+	},
+});
+
 const later = group({
 	name: 'later',
 	description: 'Loaded when asked.',
+	screen: ctx => {
+		ctx.stdout.write('the later screen\n');
+		return 0;
+	},
 	commands: [
 		leaf({
 			name: 'up',
@@ -93,7 +120,11 @@ const greeter = program({
 		group({
 			name: 'say',
 			description: 'Say things.',
-			commands: [greet, wave, open],
+			commands: [greet, wave, open, loud],
+			screen: ctx => {
+				ctx.stdout.write(`${ctx.greeting} from the screen\n`);
+				return 0;
+			},
 		}),
 		{
 			manifest: {
@@ -102,15 +133,6 @@ const greeter = program({
 				leaves: { up: 'Up.', down: 'Down.' },
 			},
 			load: () => later,
-		},
-	],
-	screens: [
-		{
-			group: 'say',
-			open: ctx => {
-				ctx.stdout.write(`${ctx.greeting} from the screen\n`);
-				return 0;
-			},
 		},
 	],
 	session: run => ({
@@ -128,6 +150,12 @@ type SessionConfig = ReturnType<
 
 const run = (argv: readonly string[], env = {}) =>
 	runCaptured(greeter.run, argv, { load: hermetic(config, env) });
+
+const onTerminal = (argv: readonly string[]) =>
+	runCaptured(greeter.run, argv, {
+		load: hermetic(config),
+		stdin: stdin({ tty: true }),
+	});
 
 describe('a program built from its commands', () => {
 	test("its config's type is the one the config's schema gives", () => {
@@ -174,14 +202,53 @@ describe('a program built from its commands', () => {
 		expect(planned.code).toBe(0);
 	});
 
-	test('a screen answers its code as it is, unawaited', async () => {
-		const opened = await runCaptured(greeter.run, ['say'], {
-			load: hermetic(config),
-			stdin: stdin({ tty: true }),
-		});
-		expect(opened).toMatchObject({
+	test("a group's screen opens for the group named alone on a terminal, answering its code as it is, unawaited", async () => {
+		expect(await onTerminal(['say'])).toMatchObject({
 			code: 0,
 			stdout: 'hello from the screen\n',
+		});
+	});
+
+	test("a nested group's screen opens for its path named alone", async () => {
+		expect(await onTerminal(['say', 'loud'])).toMatchObject({
+			code: 0,
+			stdout: 'HELLO from the loud screen\n',
+		});
+	});
+
+	test("a lazy group's screen opens once the group has loaded", async () => {
+		expect(await onTerminal(['later'])).toMatchObject({
+			code: 0,
+			stdout: 'the later screen\n',
+		});
+	});
+
+	test('no screen opens under a dry run or a help request', async () => {
+		for (const argv of [
+			['--dry-run', 'say'],
+			['--dry-run', 'say', 'loud'],
+			['--dry-run', 'later'],
+		])
+			expect(await onTerminal(argv)).toMatchObject({
+				code: 2,
+				stdout: '',
+			});
+		for (const argv of [
+			['say', '--help'],
+			['help', 'say', 'loud'],
+			['later', '--help'],
+		]) {
+			const help = await onTerminal(argv);
+			expect(help.code).toBe(0);
+			expect(help.stdout).not.toContain('screen');
+			expect(help.stdout).toContain('Usage:');
+		}
+	});
+
+	test('a leaf under a group with a screen runs, and opens none', async () => {
+		expect(await onTerminal(['say', 'wave'])).toMatchObject({
+			code: 0,
+			stdout: 'o/\n',
 		});
 	});
 });

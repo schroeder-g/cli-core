@@ -113,11 +113,24 @@ export type GroupMembers<C extends Context> = readonly [
 	...CommandParser<C>[],
 ];
 
-/** A group: its name, its description and the commands it holds. */
+/**
+ * What a group that is a place, not a list, opens when it is named
+ * alone on a terminal, with no dry run and no help asked: a screen,
+ * answering the run's exit code.
+ */
+export type Screen<C extends Context = Context> = (
+	ctx: C,
+) => Awaitable<number>;
+
+/**
+ * A group: its name, its description, the commands it holds, and the
+ * screen it opens, if it is a place.
+ */
 export interface GroupSpec<C extends Context> {
 	readonly name: string;
 	readonly description: string;
 	readonly commands: GroupMembers<C>;
+	readonly screen?: Screen<C>;
 }
 
 /** The command builders over one program's context. */

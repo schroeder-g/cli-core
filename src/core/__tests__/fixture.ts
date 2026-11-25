@@ -90,6 +90,10 @@ export const fixture = program({
 				}),
 				leaf({ name: 'stop', description: 'Stop it.', plan: nothing }),
 			],
+			screen: ctx => {
+				ctx.stdout.write('the dev screen\n');
+				return 0;
+			},
 		}),
 		leaf({
 			name: 'doctor',
@@ -97,15 +101,6 @@ export const fixture = program({
 			args: object({ environment: optional(environment) }),
 			plan: nothing,
 		}),
-	],
-	screens: [
-		{
-			group: 'dev',
-			open: ctx => {
-				ctx.stdout.write('the dev screen\n');
-				return Promise.resolve(0);
-			},
-		},
 	],
 	session: () => ({
 		context: base => ({ ...base, root: process.cwd() }),

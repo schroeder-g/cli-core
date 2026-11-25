@@ -3,7 +3,7 @@ import { map } from '@optique/core/modifiers';
 import type { Mode, Parser } from '@optique/core/parser';
 import { command } from '@optique/core/primitives';
 
-import { doc } from './command.ts';
+import { doc, nameOf } from './command.ts';
 import type {
 	BareLeafSpec,
 	Command,
@@ -14,17 +14,47 @@ import type {
 	GroupSpec,
 	LeafSpec,
 	Planner,
+	Screen,
 } from './command.ts';
 import { Refusal } from './errors.ts';
 
 const NO_ARGS = object({});
 
+/** What group() knows of a group it built: its commands and its screen. */
+interface Built {
+	readonly commands: readonly CommandParser<never>[];
+	readonly screen?: Screen<never>;
+}
+
 // The parsers group() built, so a program can tell a group among its
-// commands from a leaf without reaching into Optique's parsers.
-const GROUPS = new WeakSet<object>();
+// commands from a leaf, and find its screen, without reaching into
+// Optique's parsers, which carry neither.
+const GROUPS = new WeakMap<object, Built>();
 
 /** Whether `parser` is a group, which the builder can open at. */
 export const isGroup = (parser: object): boolean => GROUPS.has(parser);
+
+/**
+ * The screen of the group `path` names among `commands`, at any depth;
+ * none when the path ends on a leaf, names nothing, or names a group
+ * that is no place.
+ */
+export function screenAt<C extends Context>(
+	commands: readonly CommandParser<C>[],
+	path: readonly string[],
+): Screen<C> | undefined {
+	let members: readonly CommandParser<never>[] = commands;
+	let built: Built | undefined;
+	for (const name of path) {
+		const member = members.find(parser => nameOf(parser) === name);
+		built = member === undefined ? undefined : GROUPS.get(member);
+		if (built === undefined) return undefined;
+		members = built.commands;
+	}
+	// The table holds every program's groups; this one was built over
+	// the context of the program whose commands led to it.
+	return built?.screen as Screen<C> | undefined;
+}
 
 /**
  * The command builders over one program's context, bound once so its
@@ -61,12 +91,14 @@ export function builders<C extends Context>(): CommandBuilders<C> {
 	const group = ({
 		name,
 		description,
-		commands: [first, second, ...rest],
+		commands,
+		screen,
 	}: GroupSpec<C>): CommandParser<C> => {
+		const [first, second, ...rest] = commands;
 		const built = command(name, or(first, second, ...rest), {
 			description: doc(description),
 		});
-		GROUPS.add(built);
+		GROUPS.set(built, { commands, screen });
 		return built;
 	};
 
