@@ -65,7 +65,7 @@
 		"lint": "oxlint --deny-warnings --type-aware",
 		"prepack": "bun run build",
 		"release": "changeset publish",
-		"test": "bun test ./src && node --test tools/lint/__tests__/four7.test.mts",
+		"test": "bun test ./src ./tools/readme && node --test tools/lint/__tests__/four7.test.mts",
 		"type-check": "tsc --noEmit"
 	},
 	"dependencies": {
