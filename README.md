@@ -118,3 +118,14 @@ bun run consumer      # the packed package installed under pnpm outside the repo
 ## Releasing
 
 A change a release should mention adds a changeset (`bunx changeset`). On `main`, `.github/workflows/release.yaml` gathers the pending changesets into a version pull request; merging it publishes the new version to npm with provenance, through npm's trusted publishing.
+
+## TODO
+
+- Clean up the API:
+  - `leaf` takes one object as its only argument.
+  - `commands()` takes the program's config.
+  - A planner returns its plan; consumers no longer wrap it in `Promise.resolve`.
+  - Consumers never import Optique themselves.
+  - The example program above is tidier and more colourful.
+- A program installs only `@four7/cli-core`. The core re-exports zod and Optique, so neither is a peer dependency the program adds.
+- Publish to [JSR](https://jsr.io) instead of npm. This needs a GitHub secret holding the JSR token that `release.yaml` publishes with.
