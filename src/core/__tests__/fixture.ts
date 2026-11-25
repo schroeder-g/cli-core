@@ -1,13 +1,10 @@
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import { object } from '@optique/core/constructs';
 import { optional } from '@optique/core/modifiers';
 import { flag, option } from '@optique/core/primitives';
 import { string } from '@optique/core/valueparser';
 import { z } from 'zod';
 
-import { runCaptured } from '../../testing/index.ts';
+import { hermetic, runCaptured } from '../../testing/index.ts';
 import type { Run } from '../../testing/index.ts';
 import { commands } from '../command.ts';
 import type { Context } from '../command.ts';
@@ -21,10 +18,6 @@ export const LAZY = {
 	description: 'A group loaded on demand.',
 	leaves: { up: 'Bring it up.', down: 'Take it down.' },
 };
-
-// A home no file is ever written under, so a run reads no config but
-// what --config names.
-const NO_HOME = join(tmpdir(), 'cli-fixture-no-home');
 
 const { leaf, group } = commands<Context>();
 
@@ -121,6 +114,6 @@ export const run = (
 	opts: RunProgramOptions<Context, FixtureConfig> = {},
 ): Promise<Run> =>
 	runCaptured(fixture.run, argv, {
-		load: path => config.load(path, { HOME: NO_HOME }),
+		load: hermetic(config),
 		...opts,
 	});

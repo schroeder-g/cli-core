@@ -1,10 +1,22 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { object, or } from '@optique/core/constructs';
 
 import { commands } from '../core/command.ts';
 import type { CommandParser, Context } from '../core/command.ts';
+import type {
+	Config,
+	Environment,
+	LoadedConfig,
+} from '../core/config.ts';
 import { withGlobals } from '../core/program.ts';
 import type { Program } from '../core/program.ts';
 import { capture, stdin } from './streams.ts';
+
+// A home no file is ever written under, so a hermetic load finds no
+// default config file.
+const NO_HOME = join(tmpdir(), 'cli-core-no-home');
 
 export interface Run {
 	readonly code: number;
@@ -63,3 +75,13 @@ export function printedStep(stdout: string, command: string): string[] {
 	);
 	return lines.slice(at, end < 0 ? undefined : end);
 }
+
+/**
+ * A config loader that sees `env` alone, over a home holding no file:
+ * no config file of the developer's and no variable of the process's
+ * reaches the run, only what `env` and `--config` name.
+ */
+export const hermetic =
+	<T>(config: Pick<Config<T>, 'load'>, env: Environment = {}) =>
+	(path: string | undefined): LoadedConfig<T> =>
+		config.load(path, { HOME: NO_HOME, ...env });
