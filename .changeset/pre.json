@@ -4,5 +4,14 @@
   "initialVersions": {
     "@four7/cli-core": "0.1.0"
   },
-  "changesets": []
+  "changesets": [
+    "api",
+    "atoms",
+    "checklist",
+    "checks",
+    "git",
+    "logs",
+    "options",
+    "process"
+  ]
 }
