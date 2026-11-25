@@ -1,6 +1,7 @@
 import type { LogLevel } from '@logtape/logtape';
 import { merge, object, or } from '@optique/core/constructs';
 import type { SourceContext } from '@optique/core/context';
+import type { Message } from '@optique/core/message';
 import {
 	map,
 	multiple,
@@ -69,6 +70,7 @@ import type { Streams } from './streams.ts';
 
 /** What separates a help page's usage from the paragraphs under it. */
 const PARAGRAPH_BREAK = '\n\n';
+const USAGE_LABEL = 'Usage:';
 
 /** The leaf that opens the builder, unless the program names another. */
 const BUILDER = 'i';
@@ -98,6 +100,12 @@ export interface Session<C extends Context> {
 export interface ProgramSpec<C extends Context, T> {
 	/** The program's name, as usage and the builder spell it. */
 	readonly name: string;
+	/** One line opening the root help, above its usage line. */
+	readonly brief?: string;
+	/** A paragraph after the root help's usage line, before its sections. */
+	readonly description?: string;
+	/** Text closing every help page, after its sections. */
+	readonly footer?: string;
 	/**
 	 * The top-level commands, in help's order; a lazy group stands in
 	 * place.
@@ -206,6 +214,9 @@ export type Program<C extends Context> = FluentParser<
 const isLazy = <C extends Context>(
 	member: CommandParser<C> | LazyGroup<C>,
 ): member is LazyGroup<C> => 'manifest' in member;
+
+const prose = (text: string | undefined): Message | undefined =>
+	text === undefined ? undefined : doc(text);
 
 // The first pass hands the context what it parsed, or a partial value
 // when it stopped short; only `--config` is read from it.
@@ -342,6 +353,9 @@ async function runWith<C extends Context, T>(
 	const options: RunOptions = {
 		args: argv,
 		programName: spec.name,
+		brief: prose(spec.brief),
+		description: prose(spec.description),
+		footer: prose(spec.footer),
 		help: {
 			command: { group: COMMANDS_SECTION },
 			option: { names: HELP_FLAGS, group: FLAGS_SECTION },
@@ -436,7 +450,7 @@ async function runWith<C extends Context, T>(
 	};
 
 	// The page's first paragraph is the command's usage, wrapped and
-	// coloured as the help shows it.
+	// coloured as the help shows it, less the brief the root opens on.
 	const usageLine = async (
 		program: Program<C>,
 		path: readonly string[],
@@ -445,7 +459,9 @@ async function runWith<C extends Context, T>(
 		await helpPage(program, path, line => {
 			page += line;
 		});
-		writeErr(page.split(PARAGRAPH_BREAK)[0] ?? '');
+		const lines = (page.split(PARAGRAPH_BREAK)[0] ?? '').split('\n');
+		const usage = lines.findIndex(line => line.includes(USAGE_LABEL));
+		writeErr(lines.slice(Math.max(usage, 0)).join('\n'));
 	};
 
 	// The usage above an error is the one its help page opens with: the
