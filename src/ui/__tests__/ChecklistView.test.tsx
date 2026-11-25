@@ -19,7 +19,8 @@ import type {
 	ChecklistItem,
 	ChecklistViewProps,
 } from '../ChecklistView.tsx';
-import { presentView } from '../screen.ts';
+import { checklistView, presentView } from '../screen.ts';
+import type { Exit } from '../screen.ts';
 
 const SPACE = ' ';
 
@@ -60,16 +61,15 @@ const run = async (
 	props: Partial<Props> = {},
 ) => {
 	const { result, screen } = await drive(
-		open((stdin, stdout) =>
-			presentView<ReadonlySet<string> | undefined, Props>(
-				{ stdin, stdout, stderr: capture() },
-				'needs a terminal',
-				() => import('../ChecklistView.tsx'),
-				'ChecklistView',
-				exit => ({
+		open((stdin, stdout): Promise<ReadonlySet<string> | undefined> =>
+			presentView({
+				io: { stdin, stdout, stderr: capture() },
+				refusal: 'needs a terminal',
+				view: checklistView<Item>,
+				props: (exit: Exit<ReadonlySet<string> | undefined>) => ({
 					title: TITLE,
 					items: ITEMS,
-					initial: () => new Set(),
+					initial: () => new Set<string>(),
 					onQuit: () => exit.done(undefined),
 					onConfirm: checked => {
 						exit.done(checked);
@@ -77,8 +77,8 @@ const run = async (
 					},
 					...props,
 				}),
-				{ presentation: { mouse: true } },
-			),
+				presentation: { mouse: true },
+			}),
 		),
 		steps,
 	);

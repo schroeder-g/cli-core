@@ -3,7 +3,7 @@ import { commands, runMain } from '@four7/cli-core';
 import type { Context } from '@four7/cli-core';
 import { argument, object, string } from '@four7/cli-core/args';
 import { defineConfig, verbatim, z } from '@four7/cli-core/config';
-import { presentView } from '@four7/cli-core/screen';
+import { checklistView, presentView } from '@four7/cli-core/screen';
 
 interface NotesContext extends Context {
 	readonly file: string;
@@ -57,12 +57,11 @@ const list = leaf({
 const tick = async (ctx: NotesContext): Promise<number> => {
 	const all = await notes(ctx);
 	let done: ReadonlySet<string> = new Set();
-	await presentView(
-		ctx,
-		'nt notes needs a terminal.',
-		() => import('@four7/cli-core/ui'),
-		'ChecklistView',
-		exit => ({
+	await presentView({
+		io: ctx,
+		refusal: 'nt notes needs a terminal.',
+		view: checklistView,
+		props: exit => ({
 			title: 'nt',
 			sub: 'tick what is done',
 			items: all.map(name => ({ name })),
@@ -70,13 +69,13 @@ const tick = async (ctx: NotesContext): Promise<number> => {
 			confirms: 'clears them',
 			empty: 'no notes yet',
 			onQuit: () => exit.done(undefined),
-			onConfirm: (ticked: ReadonlySet<string>) => {
+			onConfirm: ticked => {
 				done = ticked;
 				exit.done(undefined);
 				return undefined;
 			},
 		}),
-	);
+	});
 	if (done.size > 0)
 		await Bun.write(
 			ctx.file,

@@ -6,6 +6,7 @@ import type { Context } from '@four7/cli-core';
 import { argument, object, string } from '@four7/cli-core/args';
 import { defineConfig, verbatim, z } from '@four7/cli-core/config';
 import { presentView } from '@four7/cli-core/screen';
+import type { Exit } from '@four7/cli-core/screen';
 
 export interface NotesContext extends Context {
 	readonly file: string;
@@ -98,13 +99,12 @@ export const nt = program({
 		{
 			group: 'notes',
 			open: async ctx => {
-				await presentView<void, { onDone: () => void }>(
-					ctx,
-					'nt notes needs a terminal.',
-					() => import('./View.tsx'),
-					'View',
-					exit => ({ onDone: () => exit.done() }),
-				);
+				await presentView({
+					io: ctx,
+					refusal: 'nt notes needs a terminal.',
+					view: () => import('./View.tsx').then(module => module.View),
+					props: (exit: Exit<void>) => ({ onDone: () => exit.done() }),
+				});
 				return 0;
 			},
 		},

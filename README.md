@@ -20,7 +20,7 @@ import { commands, runMain } from '@four7/cli-core';
 import type { Context } from '@four7/cli-core';
 import { argument, object, string } from '@four7/cli-core/args';
 import { defineConfig, verbatim, z } from '@four7/cli-core/config';
-import { presentView } from '@four7/cli-core/screen';
+import { checklistView, presentView } from '@four7/cli-core/screen';
 
 interface NotesContext extends Context {
 	readonly file: string;
@@ -74,12 +74,11 @@ const list = leaf({
 const tick = async (ctx: NotesContext): Promise<number> => {
 	const all = await notes(ctx);
 	let done: ReadonlySet<string> = new Set();
-	await presentView(
-		ctx,
-		'nt notes needs a terminal.',
-		() => import('@four7/cli-core/ui'),
-		'ChecklistView',
-		exit => ({
+	await presentView({
+		io: ctx,
+		refusal: 'nt notes needs a terminal.',
+		view: checklistView,
+		props: exit => ({
 			title: 'nt',
 			sub: 'tick what is done',
 			items: all.map(name => ({ name })),
@@ -87,13 +86,13 @@ const tick = async (ctx: NotesContext): Promise<number> => {
 			confirms: 'clears them',
 			empty: 'no notes yet',
 			onQuit: () => exit.done(undefined),
-			onConfirm: (ticked: ReadonlySet<string>) => {
+			onConfirm: ticked => {
 				done = ticked;
 				exit.done(undefined);
 				return undefined;
 			},
 		}),
-	);
+	});
 	if (done.size > 0)
 		await Bun.write(
 			ctx.file,
@@ -127,7 +126,7 @@ await runMain(nt.run);
 
 `runMain` hands the program the arguments after the script's and makes the code it answers the process's, through `process.exitCode`, so what the program wrote drains before the process exits. A reader that closes early, `nt notes list | head -1`, ends the process quietly with 0. The shebang's `--env-file=/dev/null` keeps Bun from loading the working directory's `.env` into the program, which every child it spawns would inherit.
 
-`nt notes add 'a note'` runs the step, `nt --dry-run notes add 'a note'` prints it, and `nt i notes` builds the command interactively. `nt notes` alone on a terminal opens the notes as a checklist, cli-core's `ChecklistView`; Enter clears the ticked ones. The config is read from `$XDG_CONFIG_HOME/nt/config.toml` (or `~/.config/nt/config.toml`, or the file `--config` names), and `NT_FILE` overrides its `file`.
+`nt notes add 'a note'` runs the step, `nt --dry-run notes add 'a note'` prints it, and `nt i notes` builds the command interactively. `nt notes` alone on a terminal opens the notes as a checklist, cli-core's `ChecklistView`; Enter clears the ticked ones. `presentView` draws the view its `view` loads, here `checklistView`, only when the screen opens, and `props`, built over the `exit` the view ends through, are checked against that view's component. The config is read from `$XDG_CONFIG_HOME/nt/config.toml` (or `~/.config/nt/config.toml`, or the file `--config` names), and `NT_FILE` overrides its `file`.
 
 ## Entry points
 
@@ -137,13 +136,13 @@ await runMain(nt.run);
 | `/args` | The parser vocabulary: Optique's constructs, modifiers, primitives, value parsers and message helpers, `parse`, `suggest` and `getDocPage`, and the types a custom value parser is written in; cli-core's option parsers (`names`, `nameList`, `timestamp`) and the selections over what they parsed (`selectNamed`, `selectOne`) |
 | `/config` | `defineConfig`: a TOML file under the config home, overlaid by a prefix's variables, validated by a schema written with `z`, zod as the package re-exports it; `xdgHome`, the XDG base directories |
 | `/process` | The plan runner, spawning, `capture` and `captureOrFail`, signals, ports and health checks; supervising processes in the foreground or detached into a record file, stopping a process group, knowing a pid by its start time, waiting until a child listens, gating a start on its needs; run logs and `LogFollower`, which follows several as one stream; finding a program on PATH and named checks run at once and reported in order; the action that runs a chosen plan (`chosenPlan`); opening a url and copying to the clipboard |
-| `/screen` | The Ink screen host: `presentView`, `assertTerminal`, `awaitKey` |
+| `/screen` | The Ink screen host: `presentView`, which draws a view loaded when its screen opens, and cli-core's own views ready to present, `checklistView` (`ChecklistView`) and `logViewer` (`LogViewer`); `assertTerminal`, `awaitKey` |
 | `/ui` | The component library: atoms, molecules, hooks, glyphs and hints, among them `Link`, `Columns`, the checklist screen (`ChecklistView`), `LOG_RULES` and `LogViewer` |
 | `/builder` | The interactive builder a program's `i` leaf opens |
 | `/testing` | Captured streams, a stdin that claims to be a terminal, stubbed tools, free ports, a screen driver, `runCaptured` and `hermetic`; `refused` and `writeUnder`; scratch directories and git repositories |
 | `/git` | The root locator (`findRoot`), git queries, a scratch worktree's plan steps and the branch and clean-tree gate |
 
-`/screen` and `/ui` load Ink and React. The root, `/args` and `/config` don't, so a program that never draws a screen never loads them. `/git`'s queries, worktree steps and gate run the `git` binary, which the program's machine must have on PATH; `findRoot` runs nothing.
+`/ui` loads Ink and React. `/screen` loads them, and the view, only when a view opens, and the root, `/args` and `/config` never do, so a program that never draws a screen never loads them. `/git`'s queries, worktree steps and gate run the `git` binary, which the program's machine must have on PATH; `findRoot` runs nothing.
 
 ## Development
 
