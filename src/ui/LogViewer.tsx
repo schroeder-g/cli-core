@@ -204,7 +204,8 @@ export function LogViewer({
 	const snapshot = useStore(logs);
 	const { names, hidden, pattern, regex, problem, visible } = snapshot;
 	const { rows } = useWindowSize();
-	const [behind, setBehind] = useState(0);
+	/** The newest line shown while scrolled back; none while following. */
+	const [anchor, setAnchor] = useState<number | undefined>(undefined);
 	const [prompt, setPrompt] = useState<string | undefined>(undefined);
 	const help = useHelp();
 	const stream = useRef<DOMElement>(null);
@@ -216,10 +217,21 @@ export function LogViewer({
 		1,
 		hasMeasured ? measured : rows || DEFAULT_ROWS,
 	);
-	const furthest = Math.max(0, visible.length - height);
+	const fewest = Math.min(height, visible.length);
+	const end =
+		anchor === undefined
+			? visible.length
+			: Math.max(
+					fewest,
+					visible.findLastIndex(line => line.seq <= anchor) + 1,
+				);
 
-	const scroll = (by: number): void =>
-		setBehind(at => Math.min(furthest, Math.max(0, at + by)));
+	const scrollTo = (next: number): void => {
+		const at = Math.min(visible.length, Math.max(fewest, next));
+		setAnchor(at === visible.length ? undefined : visible[at - 1]?.seq);
+	};
+
+	const scroll = (by: number): void => scrollTo(end - by);
 
 	useInput((input, key) => {
 		if (isInterrupt(input, key)) return;
@@ -235,8 +247,8 @@ export function LogViewer({
 		else if (key.downArrow || input === 'j') scroll(-1);
 		else if (key.pageUp) scroll(height);
 		else if (key.pageDown) scroll(-height);
-		else if (input === 'G') setBehind(0);
-		else if (input === 'g') setBehind(furthest);
+		else if (input === 'G') setAnchor(undefined);
+		else if (input === 'g') scrollTo(fewest);
 		else if (input === 'a') logs.showAll();
 		else if (input === 'c') logs.setPattern('');
 		else if (input === '/') setPrompt(pattern);
@@ -253,7 +265,6 @@ export function LogViewer({
 		},
 		onWheel: direction => scroll(-direction),
 	});
-	const end = visible.length - Math.min(behind, furthest);
 	const start = Math.max(0, end - height);
 	const shown = visible.slice(start, end);
 	const nameWidth = widthOf(names, name => name);
@@ -335,7 +346,7 @@ export function LogViewer({
 					{visible.length === 0
 						? 'showing 0 of 0'
 						: `showing ${start + 1}-${end} of ${visible.length}`}
-					{behind === 0 ? `${SEPARATOR}following` : ''}
+					{anchor === undefined ? `${SEPARATOR}following` : ''}
 					{snapshot.lines.length !== visible.length
 						? `${SEPARATOR}${snapshot.lines.length - visible.length} filtered out`
 						: ''}

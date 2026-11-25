@@ -183,7 +183,7 @@ describe('LogViewer', () => {
 		expect(given.result).toBe('back');
 	});
 
-	test('follows the newest line, and stops following once scrolled back', async () => {
+	test('follows the newest line, and holds still once scrolled back while lines come in', async () => {
 		const { logs, files } = follower(
 			Array.from({ length: 30 }, (_, at) => `line ${at}`),
 			[],
@@ -199,7 +199,11 @@ describe('LogViewer', () => {
 					logs.read();
 				},
 			),
-			matching(/showing \d+-30 of 31(?! · following)[^\n]*$/m, 'G'),
+			matching(
+				/^api {2}line 27\napi {2}line 28\n\nshowing \d+-29 of 31(?! · following)[^\n]*$/m,
+				'G',
+				lastFrame,
+			),
 			matching(
 				/line 30[\s\S]*showing \d+-31 of 31 · following[^\n]*$/m,
 				'q',
