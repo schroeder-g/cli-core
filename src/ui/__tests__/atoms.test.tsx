@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test';
+import { stripVTControlCharacters } from 'node:util';
 
 import { Box, renderToString, Text } from 'ink';
 import type { ReactNode } from 'react';
-import stripAnsi from 'strip-ansi';
 
 import { Link } from '../atoms/Link.tsx';
 import { hyperlink } from '../hyperlink.ts';
@@ -16,7 +16,8 @@ const OPEN = `\u001b]8;;${URL}\u0007`;
 
 const CLOSE = '\u001b]8;;\u0007';
 
-const linesOf = (text: string): string[] => stripAnsi(text).split('\n');
+const linesOf = (text: string): string[] =>
+	stripVTControlCharacters(text).split('\n');
 
 describe('hyperlink', () => {
 	test('wraps the label in an OSC 8 link to the url', () => {
@@ -121,7 +122,7 @@ describe('rowWidth', () => {
 	// Ink trims a line's trailing spaces, so a mark drawn after the row
 	// shows where it ends.
 	const widthOf = (row: ReactNode): number =>
-		stripAnsi(
+		stripVTControlCharacters(
 			renderToString(
 				<Box>
 					{row}
