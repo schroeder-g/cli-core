@@ -23,3 +23,4 @@ export * from './molecules/StatusRow.tsx';
 export * from './mouse.ts';
 export * from './paint.ts';
 export * from './log-rules.ts';
+export * from './LogViewer.tsx';

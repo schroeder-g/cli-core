@@ -91,7 +91,7 @@ process.exitCode = await nt.run(process.argv.slice(2));
 | `/config` | `defineConfig`: a TOML file under the config home, overlaid by a prefix's variables, validated by a zod schema |
 | `/process` | The plan runner, spawning, signals, ports, health checks, run logs and `LogFollower`, which follows several logs as one stream |
 | `/screen` | The Ink screen host: `presentView`, `assertTerminal`, `awaitKey` |
-| `/ui` | The component library: atoms, molecules, hooks, glyphs and hints |
+| `/ui` | The component library: atoms, molecules, hooks, glyphs and hints, `LOG_RULES` and `LogViewer`, the full-screen view of a `LogFollower` |
 | `/builder` | The interactive builder a program's `i` leaf opens |
 | `/testing` | Captured streams, a stdin that claims to be a terminal, stubbed tools, free ports, a screen driver and `runCaptured` |
 
