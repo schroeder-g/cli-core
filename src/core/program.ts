@@ -24,6 +24,8 @@ import { openBuilder } from '../builder/index.ts';
 import { place } from '../builder/fields.ts';
 import type { Place } from '../builder/fields.ts';
 import { runPlan } from '../process/run.ts';
+import type { CoreViews, Present, Views } from '../ui/screen.ts';
+import { presenter } from '../ui/views.ts';
 import {
 	argvReader,
 	BASE_LEVEL,
@@ -589,33 +591,54 @@ function defineProgram<C extends Context, T>(
 	return { build, run, needs, reader, groupNames };
 }
 
+/** No views of a program's own: cli-core's alone. */
+type NoViews = Readonly<Record<never, never>>;
+
 /**
- * The builders over the context `C`, and the program over them and the
- * config.
+ * What a program registers beside its config: its own views, by the
+ * names it presents them by. A name cli-core's own views hold is not
+ * the program's to take.
+ */
+export interface CommandsOptions<V extends Views> {
+	readonly views?: V & { readonly [K in keyof CoreViews]?: never };
+}
+
+/**
+ * The builders over the context `C`, the program over them and the
+ * config, and `present`, which draws a view of cli-core's or of the
+ * program's by its name.
  */
 export interface Commands<
 	C extends Context,
 	T,
+	V extends Views = NoViews,
 > extends CommandBuilders<C> {
 	readonly program: (spec: ProgramSpec<C, T>) => DefinedProgram<C, T>;
+	readonly present: Present<CoreViews & V>;
 }
 
 /** A program's config, waiting for the context its commands plan over. */
-export interface ConfiguredCommands<T> {
-	/** The builders and the program over the context `C`. */
-	over<C extends Context = Context>(): Commands<C, T>;
+export interface ConfiguredCommands<T, V extends Views = NoViews> {
+	/** The builders, the program and `present` over the context `C`. */
+	over<C extends Context = Context>(): Commands<C, T, V>;
 }
 
 /**
- * The command builders and the program over `config`: the config's
- * type comes from it, and `over` names the context once, so neither is
- * named again.
+ * The command builders, the program and `present` over `config` and
+ * the views a program registers: the config's type and the views' come
+ * from them, and `over` names the context once, so none is named
+ * again.
  */
-export function commands<T>(config: Config<T>): ConfiguredCommands<T> {
+export function commands<T, V extends Views = NoViews>(
+	config: Config<T>,
+	{ views }: CommandsOptions<V> = {},
+): ConfiguredCommands<T, V> {
+	const present = presenter(views);
 	return {
-		over: <C extends Context = Context>(): Commands<C, T> => ({
+		over: <C extends Context = Context>(): Commands<C, T, V> => ({
 			...builders<C>(),
 			program: spec => defineProgram(config, spec),
+			present,
 		}),
 	};
 }

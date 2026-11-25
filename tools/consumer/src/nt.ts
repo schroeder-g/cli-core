@@ -3,7 +3,6 @@ import { commands, runMain } from '@four7/cli-core';
 import type { Context } from '@four7/cli-core';
 import { argument, object, string } from '@four7/cli-core/args';
 import { defineConfig, verbatim, z } from '@four7/cli-core/config';
-import { checklistView, presentView } from '@four7/cli-core/screen';
 
 interface NotesContext extends Context {
 	readonly file: string;
@@ -18,7 +17,8 @@ const config = defineConfig({
 	variables: { FILE: { path: ['file'], read: verbatim } },
 });
 
-const { leaf, group, program } = commands(config).over<NotesContext>();
+const { leaf, group, program, present } =
+	commands(config).over<NotesContext>();
 
 const notes = async ({ file }: NotesContext): Promise<string[]> =>
 	(await Bun.file(file).exists())
@@ -57,10 +57,10 @@ const list = leaf({
 const tick = async (ctx: NotesContext): Promise<number> => {
 	const all = await notes(ctx);
 	let done: ReadonlySet<string> = new Set();
-	await presentView({
+	await present({
 		io: ctx,
 		refusal: 'nt notes needs a terminal.',
-		view: checklistView,
+		view: 'checklistView',
 		props: exit => ({
 			title: 'nt',
 			sub: 'tick what is done',

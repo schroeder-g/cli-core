@@ -328,3 +328,34 @@ export function checklistView(): Promise<
 /** cli-core's log viewer, `LogViewer`, as a view to present. */
 export const logViewer: LazyView<LogViewerProps> = () =>
 	import('./LogViewer.tsx').then(module => module.LogViewer);
+
+/** Views by name, each loaded when a screen presents it by its name. */
+export type Views = Readonly<Record<string, LazyView<never>>>;
+
+/** The props of the component the lazy view `V` loads. */
+export type PropsOf<V> =
+	V extends LazyView<infer P extends object> ? P : never;
+
+/** cli-core's own views, by the names a program presents them by. */
+export interface CoreViews {
+	readonly checklistView: LazyView<ChecklistViewProps<ChecklistItem>>;
+	readonly logViewer: LazyView<LogViewerProps>;
+}
+
+/** A view of the registry `V` to draw, by its name. */
+export interface NamedViewSpec<
+	V extends Views,
+	K extends keyof V,
+	T,
+> extends Presenting<T, PropsOf<V[K]>> {
+	readonly view: K;
+}
+
+/**
+ * Draws a view of the registry `V` by its name, as `presentView` draws
+ * a view it is handed, its props checked against that view's
+ * component.
+ */
+export type Present<V extends Views> = <K extends keyof V & string, T>(
+	spec: NamedViewSpec<V, K, T>,
+) => Promise<T | undefined>;

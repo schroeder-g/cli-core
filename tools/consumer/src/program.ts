@@ -5,7 +5,6 @@ import { commands } from '@four7/cli-core';
 import type { Context } from '@four7/cli-core';
 import { argument, object, string } from '@four7/cli-core/args';
 import { defineConfig, verbatim, z } from '@four7/cli-core/config';
-import { presentView } from '@four7/cli-core/screen';
 import type { Exit } from '@four7/cli-core/screen';
 
 export interface NotesContext extends Context {
@@ -21,7 +20,11 @@ export const config = defineConfig({
 	variables: { FILE: { path: ['file'], read: verbatim } },
 });
 
-const { leaf, group, program } = commands(config).over<NotesContext>();
+const { leaf, group, program, present } = commands(config, {
+	views: {
+		notes: () => import('./View.tsx').then(module => module.View),
+	},
+}).over<NotesContext>();
 
 const add = leaf({
 	name: 'add',
@@ -99,10 +102,10 @@ export const nt = program({
 		{
 			group: 'notes',
 			open: async ctx => {
-				await presentView({
+				await present({
 					io: ctx,
 					refusal: 'nt notes needs a terminal.',
-					view: () => import('./View.tsx').then(module => module.View),
+					view: 'notes',
 					props: (exit: Exit<void>) => ({ onDone: () => exit.done() }),
 				});
 				return 0;
