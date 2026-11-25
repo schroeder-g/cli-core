@@ -1,19 +1,20 @@
 import { describe, expect, test } from 'bun:test';
 
-import { object } from '@optique/core/constructs';
-import { formatMessage, message } from '@optique/core/message';
-import { parse, suggest } from '@optique/core/parser';
-import type { Parser } from '@optique/core/parser';
-import { option } from '@optique/core/primitives';
-
-import { Refusal } from '../errors.ts';
+import { Refusal } from '../../core/errors.ts';
 import {
+	formatMessage,
+	message,
 	nameList,
 	names,
+	object,
+	option,
+	parse,
 	selectNamed,
 	selectOne,
+	suggest,
 	timestamp,
-} from '../options.ts';
+} from '../index.ts';
+import type { Parser } from '../index.ts';
 
 const KNOWN = ['api', 'web', 'portfolio'];
 

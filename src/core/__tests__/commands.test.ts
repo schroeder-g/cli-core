@@ -1,11 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import { tmpdir } from 'node:os';
 
-import { object } from '@optique/core/constructs';
-import { argument } from '@optique/core/primitives';
-import { string } from '@optique/core/valueparser';
 import { z } from 'zod';
 
+import { argument, object, string } from '../../args/index.ts';
 import { defineConfig, verbatim } from '../config.ts';
 import { commands } from '../../index.ts';
 import type { Context } from '../../index.ts';

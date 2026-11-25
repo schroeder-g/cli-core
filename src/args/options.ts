@@ -9,7 +9,7 @@ import type {
 	ValueParserResult,
 } from '@optique/core/valueparser';
 
-import { Refusal } from './errors.ts';
+import { Refusal } from '../core/errors.ts';
 
 const DEFAULT_SEPARATOR = ',';
 

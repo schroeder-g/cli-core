@@ -3,11 +3,9 @@ import { join } from 'node:path';
 
 import { commands } from '@four7/cli-core';
 import type { Context } from '@four7/cli-core';
+import { argument, object, string } from '@four7/cli-core/args';
 import { defineConfig, verbatim } from '@four7/cli-core/config';
 import { presentView } from '@four7/cli-core/screen';
-import { object } from '@optique/core/constructs';
-import { argument } from '@optique/core/primitives';
-import { string } from '@optique/core/valueparser';
 import { z } from 'zod';
 
 export interface NotesContext extends Context {
