@@ -1,0 +1,20 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"exactOptionalPropertyTypes": true,
+		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": false,
+		"declaration": true,
+		"emitDeclarationOnly": true,
+		"outDir": "out",
+		"target": "esnext",
+		"module": "preserve",
+		"moduleResolution": "bundler",
+		"jsx": "react-jsx",
+		"lib": ["esnext"],
+		"types": ["bun"],
+		"verbatimModuleSyntax": true,
+		"allowImportingTsExtensions": true
+	},
+	"include": ["src"]
+}

@@ -12,5 +12,6 @@
 		"src/**/__tests__/**",
 		"tools/**/__tests__/**"
 	],
-	"project": ["src/**", "tools/**"]
+	"project": ["src/**", "tools/**"],
+	"ignore": ["tools/consumer/**"]
 }

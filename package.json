@@ -51,12 +51,13 @@
 	},
 	"scripts": {
 		"build": "rm -rf dist && tsc -p tsconfig.build.json",
+		"consumer": "./tools/consumer/check.sh",
 		"format": "oxfmt",
 		"knip": "knip --reporter compact --no-progress",
 		"lint": "oxlint --deny-warnings --type-aware",
 		"prepack": "bun run build",
 		"release": "changeset publish",
-		"test": "bun test src && node --test tools/lint/__tests__/four7.test.mts",
+		"test": "bun test ./src && node --test tools/lint/__tests__/four7.test.mts",
 		"type-check": "tsc --noEmit"
 	},
 	"dependencies": {

@@ -5,7 +5,7 @@
 	"categories": {
 		"correctness": "error"
 	},
-	"ignorePatterns": ["**/dist/**"],
+	"ignorePatterns": ["**/dist/**", "tools/consumer/**"],
 	"rules": {
 		"unicorn/no-thenable": "off",
 		// node:test's runner tracks the promise each describe and test returns

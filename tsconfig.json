@@ -18,5 +18,6 @@
 		"lib": ["esnext"],
 		"types": ["bun"]
 	},
-	"include": ["src", "tools"]
+	"include": ["src", "tools"],
+	"exclude": ["tools/consumer"]
 }

@@ -107,6 +107,7 @@ bunx oxfmt --check
 bun run knip
 bun run test          # the package's tests and the house rules' tests
 bun run build         # dist/: the JavaScript and declarations the package publishes
+bun run consumer      # the packed package installed under pnpm outside the repository, type-checked and tested as a program uses it
 ```
 
 `.github/workflows/ci.yaml` runs each of these on every pull request. To work on the package against a program that uses it, run `bun link` here and `bun link @four7/cli-core` in the program, then `bun run build` after each change. The program imports `dist/`, not the source.
