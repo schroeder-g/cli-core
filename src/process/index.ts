@@ -7,3 +7,5 @@ export * from './tools.ts';
 export * from './checks.ts';
 export * from './desktop.ts';
 export * from './chosen.ts';
+export * from './logfiles.ts';
+export * from './follower.ts';

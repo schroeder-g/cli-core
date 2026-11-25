@@ -1,6 +1,5 @@
 import type { PassThrough } from 'node:stream';
-
-import stripAnsi from 'strip-ansi';
+import { stripVTControlCharacters } from 'node:util';
 
 import type { InputStream } from '../core/streams.ts';
 import { screen, terminal } from './streams.ts';
@@ -118,9 +117,9 @@ export async function drive<T>(
 	}: DriveOptions = {},
 ): Promise<Driven<T>> {
 	for (const step of steps) {
-		const before = stripAnsi(out.text());
+		const before = stripVTControlCharacters(out.text());
 		const deadline = Date.now() + timeoutMs;
-		while (!step.until(stripAnsi(out.text()), before)) {
+		while (!step.until(stripVTControlCharacters(out.text()), before)) {
 			if (Date.now() > deadline) {
 				input.write('q');
 				await Promise.race([
@@ -128,7 +127,7 @@ export async function drive<T>(
 					Bun.sleep(QUIT_GRACE_MS),
 				]);
 				throw new Error(
-					`the screen never showed ${step.label}; it reads:\n${stripAnsi(out.text()).slice(-TAIL)}\n${context()}`,
+					`the screen never showed ${step.label}; it reads:\n${stripVTControlCharacters(out.text()).slice(-TAIL)}\n${context()}`,
 				);
 			}
 			await Bun.sleep(pollMs);
@@ -141,5 +140,9 @@ export async function drive<T>(
 		if (step.key !== '') input.write(step.key);
 	}
 	const result = await pending;
-	return { result, screen: stripAnsi(out.text()), raw: out.text() };
+	return {
+		result,
+		screen: stripVTControlCharacters(out.text()),
+		raw: out.text(),
+	};
 }
