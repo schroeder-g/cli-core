@@ -9,3 +9,5 @@ A program builds its commands and itself from its config: `commands(config).over
 A planner answers a `Plan` or an `Action` as it is, or a promise of either, so it no longer wraps one in `Promise.resolve`. So do an action's `run`, a screen's `open`, a lazy group's `load`, a step's `unless.check`, a secret's `resolve`, a chosen plan's `choose` and a check's `run`.
 
 A program imports its parser vocabulary from `@four7/cli-core/args`: Optique's constructs, modifiers, primitives, value parsers and message helpers, `parse`, `suggest` and `getDocPage`, the types a custom value parser is written in, and cli-core's own `names`, `nameList`, `selectNamed`, `selectOne` and `timestamp`, which leave the root for it. `@optique/core` is a dependency, no longer a peer, so a program installs no Optique of its own.
+
+`@four7/cli-core/config` re-exports zod as `z`, beside `defineConfig`, and zod is a dependency, no longer a peer: a program writes its config's schema with cli-core's `z` and installs no zod of its own.

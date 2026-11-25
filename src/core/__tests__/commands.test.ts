@@ -1,10 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import { tmpdir } from 'node:os';
 
-import { z } from 'zod';
-
 import { argument, object, string } from '../../args/index.ts';
-import { defineConfig, verbatim } from '../config.ts';
+import { defineConfig, verbatim, z } from '../config.ts';
 import { commands } from '../../index.ts';
 import type { Context } from '../../index.ts';
 import { hermetic, runCaptured, stdin } from '../../testing/index.ts';

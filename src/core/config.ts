@@ -15,6 +15,8 @@ const CONFIG_FILE = 'config.toml';
 
 export type { ConfigContext, ConfigMeta } from '@optique/config';
 
+export { z } from 'zod';
+
 export * from './xdg.ts';
 
 type Table = Record<string, unknown>;
