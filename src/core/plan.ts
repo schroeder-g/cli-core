@@ -45,6 +45,28 @@ export interface Step {
 }
 
 /**
+ * A read-only run of a program for its output, as `capture` takes it
+ * and `formatCapture` prints it.
+ *
+ * @public
+ */
+export interface CaptureOptions {
+	/**
+	 * Where the program runs: absolute, or relative to `root`; the
+	 * working directory by default.
+	 */
+	readonly cwd?: string;
+	/**
+	 * What a relative `cwd` resolves against, the working directory by
+	 * default.
+	 */
+	readonly root?: string;
+	readonly env?: Readonly<Record<string, Arg>>;
+	/** Text the program reads on stdin; nothing by default. */
+	readonly input?: string;
+}
+
+/**
  * Steps run in order, `finally` steps run however the run went, and
  * `then` an action run once the plan has succeeded, after its `finally`
  * steps; `--dry-run` prints the steps and then describes it.
@@ -84,12 +106,19 @@ const argWord = (arg: Arg): string =>
 const envEntry = ([name, value]: [string, Arg]): string =>
 	isSecret(value) ? `${name} ← ${value.ref}` : name;
 
+const shownCwd = (root: string, cwd: string): string =>
+	relative(root, resolve(root, cwd)) || '.';
+
+/** The command a step or a capture runs, each secret by its `ref`. */
+export const commandLine = (argv: readonly Arg[]): string =>
+	argv.map(argWord).join(' ');
+
 /** @public */
 export function formatStep(step: Step, root: string): string {
-	const cwd = relative(root, resolve(root, step.cwd)) || '.';
+	const cwd = shownCwd(root, step.cwd);
 	const lines = [
 		`# ${step.title}`,
-		`$ ${step.argv.map(argWord).join(' ')}`,
+		`$ ${commandLine(step.argv)}`,
 		`  cwd: ${cwd}`,
 	];
 	const env = Object.entries(step.env ?? {});
@@ -97,6 +126,25 @@ export function formatStep(step: Step, root: string): string {
 		lines.push(`  env: ${env.map(envEntry).join(', ')}`);
 	if (step.unless) lines.push(`  only if not: ${step.unless.describe}`);
 	return lines.join('\n');
+}
+
+/**
+ * A capture as a dry run prints it, on one line: its directory under
+ * `root`, the command and the variables it carries, as `formatStep`
+ * shows them.
+ *
+ * @public
+ */
+export function formatCapture(
+	argv: readonly Arg[],
+	{ cwd = '.', root = process.cwd(), env = {} }: CaptureOptions = {},
+): string {
+	const entries = Object.entries(env);
+	const vars =
+		entries.length === 0
+			? ''
+			: `  env: ${entries.map(envEntry).join(', ')}`;
+	return `in ${shownCwd(root, cwd)}: ${commandLine(argv)}${vars}`;
 }
 
 const stepLines = (steps: readonly Step[], root: string): string[] =>
