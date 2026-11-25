@@ -73,7 +73,6 @@ const nt = defineProgram<NotesContext, typeof config.defaults>({
 	session: run => ({
 		context: base => ({
 			...base,
-			root: process.cwd(),
 			file: run.config().file,
 		}),
 	}),
@@ -97,8 +96,9 @@ await runMain(nt.run);
 | `/ui` | The component library: atoms, molecules, hooks, glyphs and hints |
 | `/builder` | The interactive builder a program's `i` leaf opens |
 | `/testing` | Captured streams, a stdin that claims to be a terminal, stubbed tools, free ports, a screen driver and `runCaptured` |
+| `/git` | The root locator (`findRoot`), git queries, a scratch worktree's plan steps and the branch and clean-tree gate |
 
-`/screen` and `/ui` load Ink and React. The root and `/config` don't, so a program that never draws a screen never loads them.
+`/screen` and `/ui` load Ink and React. The root and `/config` don't, so a program that never draws a screen never loads them. `/git`'s queries, worktree steps and gate run the `git` binary, which the program's machine must have on PATH; `findRoot` runs nothing.
 
 ## Development
 

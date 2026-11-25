@@ -6,3 +6,4 @@ export * from './streams.ts';
 export * from './stubs.ts';
 export * from './files.ts';
 export * from './refusals.ts';
+export * from './git.ts';
