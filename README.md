@@ -15,7 +15,8 @@ bun add @four7/cli-core @optique/core ink react zod
 ## A program
 
 ```ts
-import { commands, defineProgram } from '@four7/cli-core';
+#!/usr/bin/env -S bun --env-file=/dev/null
+import { commands, defineProgram, runMain } from '@four7/cli-core';
 import type { Context } from '@four7/cli-core';
 import { defineConfig, verbatim } from '@four7/cli-core/config';
 import { object } from '@optique/core/constructs';
@@ -78,8 +79,10 @@ const nt = defineProgram<NotesContext, typeof config.defaults>({
 	}),
 });
 
-process.exitCode = await nt.run(process.argv.slice(2));
+await runMain(nt.run);
 ```
+
+`runMain` hands the program the arguments after the script's and makes the code it answers the process's, through `process.exitCode`, so what the program wrote drains before the process exits. A reader that closes early, `nt notes list | head -1`, ends the process quietly with 0. The shebang's `--env-file=/dev/null` keeps Bun from loading the working directory's `.env` into the program, which every child it spawns would inherit.
 
 `nt notes add 'a note'` runs the step, `nt --dry-run notes add 'a note'` prints it, and `nt i notes` builds the command interactively. The config is read from `$XDG_CONFIG_HOME/nt/config.toml` (or `~/.config/nt/config.toml`, or the file `--config` names), and `NT_FILE` overrides its `file`.
 
@@ -87,9 +90,9 @@ process.exitCode = await nt.run(process.argv.slice(2));
 
 | Import | Holds |
 |--------|-------|
-| `@four7/cli-core` | The command model (`commands<C>()`, plans, actions), the program runner (`defineProgram`), confirmation, errors, exit codes and logging |
-| `/config` | `defineConfig`: a TOML file under the config home, overlaid by a prefix's variables, validated by a zod schema |
-| `/process` | The plan runner, spawning, signals, ports, health checks, finding a program on PATH, and named checks run at once and reported in order |
+| `@four7/cli-core` | The command model (`commands<C>()`, plans, actions), the program runner (`defineProgram`) and its entry (`runMain`), confirmation, errors, exit codes, logging and a directory of named files (`namedFiles`) |
+| `/config` | `defineConfig`: a TOML file under the config home, overlaid by a prefix's variables, validated by a zod schema; `xdgHome`, the XDG base directories |
+| `/process` | The plan runner, spawning, signals, ports and health checks; finding a program on PATH; named checks run at once and reported in order; opening a url and copying to the clipboard |
 | `/screen` | The Ink screen host: `presentView`, `assertTerminal`, `awaitKey` |
 | `/ui` | The component library: atoms, molecules, hooks, glyphs and hints |
 | `/builder` | The interactive builder a program's `i` leaf opens |

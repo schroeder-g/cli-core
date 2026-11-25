@@ -1,5 +1,4 @@
-import { homedir } from 'node:os';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { bindConfig, createConfigContext } from '@optique/config';
 import type { ConfigContext, ConfigLoadResult } from '@optique/config';
@@ -9,12 +8,14 @@ import type { z } from 'zod';
 
 import { Refusal } from './errors.ts';
 import { readToml } from './files.ts';
+import { xdgHome } from './xdg.ts';
+import type { Environment } from './xdg.ts';
 
 const CONFIG_FILE = 'config.toml';
 
 export type { ConfigContext, ConfigMeta } from '@optique/config';
 
-export type Environment = Readonly<Record<string, string | undefined>>;
+export * from './xdg.ts';
 
 type Table = Record<string, unknown>;
 
@@ -133,22 +134,16 @@ export function defineConfig<
 	const defaults: T = schema.parse({});
 	const context = createConfigContext({ schema });
 
-	// XDG says to ignore a relative XDG_CONFIG_HOME; an empty HOME is no
-	// home at all.
 	const locate = (
 		path: string | undefined,
 		env: Environment,
-	): Location => {
-		if (path !== undefined)
-			return { file: resolve(path), explicit: true };
-		const xdg = env.XDG_CONFIG_HOME;
-		const home = env.HOME || homedir();
-		const base =
-			xdg !== undefined && isAbsolute(xdg)
-				? xdg
-				: join(home, '.config');
-		return { file: join(base, name, CONFIG_FILE), explicit: false };
-	};
+	): Location =>
+		path === undefined
+			? {
+					file: join(xdgHome('config', env), name, CONFIG_FILE),
+					explicit: false,
+				}
+			: { file: resolve(path), explicit: true };
 
 	/**
 	 * The variables laid over a copy of the table, by the path each
