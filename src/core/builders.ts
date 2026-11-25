@@ -17,6 +17,12 @@ import type {
 	Screen,
 } from './command.ts';
 import { Refusal } from './errors.ts';
+import {
+	COMMANDS_SECTION,
+	FLAGS_SECTION,
+	section,
+	synopsis,
+} from './synopsis.ts';
 
 const NO_ARGS = object({});
 
@@ -81,7 +87,7 @@ export function builders<C extends Context>(): CommandBuilders<C> {
 		const plan = spec.plan as Planner<unknown, C>;
 		return command(
 			spec.name,
-			map(args, (value): Command<C> => ({
+			map(section(FLAGS_SECTION, args), (value): Command<C> => ({
 				plan: ctx => plan(value, ctx),
 			})),
 			{ description: doc(spec.description) },
@@ -95,9 +101,14 @@ export function builders<C extends Context>(): CommandBuilders<C> {
 		screen,
 	}: GroupSpec<C>): CommandParser<C> => {
 		const [first, second, ...rest] = commands;
-		const built = command(name, or(first, second, ...rest), {
-			description: doc(description),
-		});
+		const built = command(
+			name,
+			section(COMMANDS_SECTION, or(first, second, ...rest)),
+			{
+				description: doc(description),
+				usageLine: synopsis,
+			},
+		);
 		GROUPS.set(built, { commands, screen });
 		return built;
 	};

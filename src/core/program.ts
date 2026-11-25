@@ -24,6 +24,12 @@ import { openBuilder } from '../builder/index.ts';
 import { place } from '../builder/fields.ts';
 import type { Place } from '../builder/fields.ts';
 import { runPlan } from '../process/run.ts';
+import {
+	COMMANDS_SECTION,
+	FLAGS_SECTION,
+	section,
+	synopsisOver,
+} from './synopsis.ts';
 import type { CoreViews, Present, Views } from '../ui/screen.ts';
 import { presenter } from '../ui/views.ts';
 import {
@@ -175,14 +181,19 @@ const globals = object({
 });
 
 /**
- * The globals over a tree of leaves: the shape every program has.
+ * The globals over a tree of leaves: the shape every program has. Help
+ * lists the tree under Commands and the globals under Flags, after the
+ * flags of the leaf it opened on.
  *
  * @public
  */
 export function withGlobals<C extends Context>(
 	tree: Parser<Mode, Command<C> | BuilderRequest, unknown>,
 ): Program<C> {
-	return merge(globals, tree);
+	return merge(
+		section(COMMANDS_SECTION, tree),
+		section(FLAGS_SECTION, globals),
+	);
 }
 
 /** @public */
@@ -331,9 +342,13 @@ async function runWith<C extends Context, T>(
 	const options: RunOptions = {
 		args: argv,
 		programName: spec.name,
-		help: { command: true, option: { names: HELP_FLAGS } },
+		help: {
+			command: { group: COMMANDS_SECTION },
+			option: { names: HELP_FLAGS, group: FLAGS_SECTION },
+		},
+		usageLine: () => synopsisOver(globals.usage),
 		showDefault: true,
-		completion: 'command',
+		completion: { command: { group: COMMANDS_SECTION } },
 		errorExitCode: REFUSED,
 		colors:
 			opts.stdout === undefined ? undefined : stdout.isTTY === true,
@@ -433,9 +448,10 @@ async function runWith<C extends Context, T>(
 		writeErr(page.split(PARAGRAPH_BREAK)[0] ?? '');
 	};
 
-	// Optique puts the root's usage above every error. Inside a
-	// command, that command's own usage answers the mistake, so the
-	// error is held until the usage is out.
+	// The usage above an error is the one its help page opens with: the
+	// root's synopsis, or the opened command's own grammar. Optique would
+	// put the root's full grammar there, so the error is held until the
+	// usage is out.
 	const parse = async (
 		program: Program<C>,
 		opened: readonly string[],
@@ -444,15 +460,11 @@ async function runWith<C extends Context, T>(
 		try {
 			return await runAsync(program, {
 				...options,
-				aboveError: opened.length === 0 ? 'usage' : 'none',
+				aboveError: 'none',
 				stderr: line => held.push(line),
 			});
 		} catch (error) {
-			if (
-				error instanceof Exit
-				&& error.code === REFUSED
-				&& opened.length > 0
-			)
+			if (error instanceof Exit && error.code === REFUSED)
 				await usageLine(program, opened);
 			throw error;
 		} finally {
