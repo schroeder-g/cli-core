@@ -89,13 +89,13 @@ await runMain(nt.run);
 
 | Import | Holds |
 |--------|-------|
-| `@four7/cli-core` | The command model (`commands<C>()`, plans, actions), the program runner (`defineProgram`) and its entry (`runMain`), confirmation, errors, exit codes, logging and a directory of named files (`namedFiles`) |
+| `@four7/cli-core` | The command model (`commands<C>()`, plans, actions), the program runner (`defineProgram`) and its entry (`runMain`), confirmation, errors, exit codes and logging; the option vocabulary (`names`, `selectNamed`, `selectOne`, `timestamp`); the dependency graph (`dependencyGraph`) and the checklist rules that close over it; a directory of named files (`namedFiles`) |
 | `/config` | `defineConfig`: a TOML file under the config home, overlaid by a prefix's variables, validated by a zod schema; `xdgHome`, the XDG base directories |
-| `/process` | The plan runner, spawning, signals, ports and health checks; finding a program on PATH; named checks run at once and reported in order; opening a url and copying to the clipboard |
+| `/process` | The plan runner, spawning, `capture` and `captureOrFail`, signals, ports and health checks; supervising processes in the foreground or detached into a record file, stopping a process group, knowing a pid by its start time, waiting until a child listens, gating a start on its needs; run logs and `LogFollower`, which follows several as one stream; finding a program on PATH and named checks run at once and reported in order; the action that runs a chosen plan (`chosenPlan`); opening a url and copying to the clipboard |
 | `/screen` | The Ink screen host: `presentView`, `assertTerminal`, `awaitKey` |
-| `/ui` | The component library: atoms, molecules, hooks, glyphs and hints |
+| `/ui` | The component library: atoms, molecules, hooks, glyphs and hints, among them `Link`, `Columns`, the checklist screen (`ChecklistView`), `LOG_RULES` and `LogViewer` |
 | `/builder` | The interactive builder a program's `i` leaf opens |
-| `/testing` | Captured streams, a stdin that claims to be a terminal, stubbed tools, free ports, a screen driver and `runCaptured` |
+| `/testing` | Captured streams, a stdin that claims to be a terminal, stubbed tools, free ports, a screen driver, `runCaptured` and `hermetic`; `refused` and `writeUnder`; scratch directories and git repositories |
 | `/git` | The root locator (`findRoot`), git queries, a scratch worktree's plan steps and the branch and clean-tree gate |
 
 `/screen` and `/ui` load Ink and React. The root and `/config` don't, so a program that never draws a screen never loads them. `/git`'s queries, worktree steps and gate run the `git` binary, which the program's machine must have on PATH; `findRoot` runs nothing.
