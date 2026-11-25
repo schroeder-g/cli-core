@@ -1,3 +1,4 @@
+import { useInput } from 'ink';
 import type { Key } from 'ink';
 import { useState } from 'react';
 
@@ -55,10 +56,12 @@ export function useChecklistScreen(
 		...rules,
 		onHeld: (name, by) => setNotice(heldNotice?.(name, by)),
 	});
+	// Ink calls the input handlers in the order they were declared, so
+	// this clear runs before the key a notice of its own may set.
+	useInput(() => setNotice(undefined));
 	const { index, select } = useScreen(names.length, {
 		onQuit,
 		onKey: (input, key) => {
-			setNotice(undefined);
 			const pointed = names[index];
 			if (input === ' ' && pointed !== undefined) list.toggle(pointed);
 			else if (input === 'a') list.toggleAll();
