@@ -1,0 +1,53 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["typescript", "unicorn", "oxc", "import"],
+	"jsPlugins": ["./tools/lint/four7.mts"],
+	"categories": {
+		"correctness": "error"
+	},
+	"ignorePatterns": ["**/dist/**"],
+	"rules": {
+		"unicorn/no-thenable": "off",
+		// node:test's runner tracks the promise each describe and test returns
+		"typescript/no-floating-promises": [
+			"error",
+			{
+				"allowForKnownSafeCalls": [
+					{
+						"from": "package",
+						"package": "node:test",
+						"name": ["describe", "it", "suite", "test"]
+					}
+				]
+			}
+		],
+		"import/no-cycle": ["error", { "ignoreTypes": true }],
+		"import/first": "error",
+		"import/no-duplicates": "error",
+		"four7/constants-first": "error",
+		"four7/padded-declarations": "error",
+		"four7/tests-in-tests-dir": "error",
+		"complexity": ["error", { "max": 30 }],
+		"max-depth": ["error", { "max": 4 }],
+		"max-params": ["error", { "max": 6 }],
+		"max-lines-per-function": [
+			"error",
+			{ "max": 200, "skipBlankLines": true, "skipComments": true }
+		]
+	},
+	"overrides": [
+		{
+			"files": ["**/__tests__/**"],
+			"rules": {
+				"typescript/await-thenable": "off",
+				"complexity": "off",
+				"max-depth": "off",
+				"max-params": "off",
+				"max-lines-per-function": "off"
+			}
+		}
+	],
+	"env": {
+		"builtin": true
+	}
+}

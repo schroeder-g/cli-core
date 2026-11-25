@@ -1,0 +1,97 @@
+{
+	"name": "@four7/cli-core",
+	"version": "0.1.0",
+	"description": "A command-line program core for Bun: commands that plan before they run, Optique parsing, TOML config, Ink screens and a form builder",
+	"license": "MIT",
+	"author": "Alex Goncalves <schroedergoncalves@gmail.com>",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/schroeder-g/cli-core.git"
+	},
+	"files": [
+		"dist",
+		"src",
+		"!**/__tests__"
+	],
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./builder": {
+			"types": "./dist/builder/index.d.ts",
+			"default": "./dist/builder/index.js"
+		},
+		"./config": {
+			"types": "./dist/core/config.d.ts",
+			"default": "./dist/core/config.js"
+		},
+		"./process": {
+			"types": "./dist/process/index.d.ts",
+			"default": "./dist/process/index.js"
+		},
+		"./screen": {
+			"types": "./dist/ui/screen.d.ts",
+			"default": "./dist/ui/screen.js"
+		},
+		"./ui": {
+			"types": "./dist/ui/index.d.ts",
+			"default": "./dist/ui/index.js"
+		},
+		"./testing": {
+			"types": "./dist/testing/index.d.ts",
+			"default": "./dist/testing/index.js"
+		}
+	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	},
+	"scripts": {
+		"build": "rm -rf dist && tsc -p tsconfig.build.json",
+		"format": "oxfmt",
+		"knip": "knip --reporter compact --no-progress",
+		"lint": "oxlint --deny-warnings --type-aware",
+		"prepack": "bun run build",
+		"release": "changeset publish",
+		"test": "bun test src && node --test tools/lint/__tests__/four7.test.mts",
+		"type-check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@inkjs/ui": "2.0.0",
+		"@logtape/logtape": "^2.4.2",
+		"@optique/config": "1.3.6",
+		"@optique/logtape": "1.3.6",
+		"@optique/run": "1.3.6",
+		"es-toolkit": "1.52.0",
+		"strip-ansi": "7.2.0"
+	},
+	"devDependencies": {
+		"@changesets/changelog-github": "^0.5.1",
+		"@changesets/cli": "2.30.0",
+		"@optique/core": "1.3.6",
+		"@types/bun": "^1.4.3",
+		"@types/node": "^24",
+		"@types/react": "19.3.0",
+		"ink": "8.0.0",
+		"knip": "6.40.0",
+		"oxfmt": "0.71.0",
+		"oxlint": "1.87.0",
+		"oxlint-tsgolint": "7.0.2003",
+		"react": "19.3.1",
+		"typescript": "^5.7.2",
+		"zod": "^4.6.5"
+	},
+	"peerDependencies": {
+		"@optique/core": "1.3.6",
+		"ink": "8.0.0",
+		"react": "19.3.1",
+		"zod": "^4.6.5"
+	},
+	"engines": {
+		"bun": ">=1.3"
+	},
+	"packageManager": "bun@1.3.13"
+}

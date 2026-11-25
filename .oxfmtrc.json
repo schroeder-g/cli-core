@@ -1,0 +1,19 @@
+{
+	"$schema": "./node_modules/oxfmt/configuration_schema.json",
+	"printWidth": 72,
+	"useTabs": true,
+	"tabWidth": 2,
+	"singleQuote": true,
+	"jsxSingleQuote": true,
+	"trailingComma": "all",
+	"arrowParens": "avoid",
+	"experimentalOperatorPosition": "start",
+	"singleAttributePerLine": true,
+	"jsdoc": {
+		"commentLineStrategy": "keep",
+		"lineWrappingStyle": "balance",
+		"capitalizeDescriptions": false,
+		"addDefaultToDescription": false
+	},
+	"ignorePatterns": ["**/*.md", "dist/**", ".changeset/**"]
+}
