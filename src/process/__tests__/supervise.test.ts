@@ -5,6 +5,7 @@ import {
 	beforeEach,
 	describe,
 	expect,
+	setDefaultTimeout,
 	test,
 } from 'bun:test';
 import {
@@ -67,6 +68,10 @@ const ENTRY = z.object({
 	log: z.string(),
 	flavour: z.string().optional(),
 });
+
+// Each test starts process trees, which a loaded machine slows past
+// bun's 5 s default.
+setDefaultTimeout(SETTLE_MS * 3);
 
 type Entry = z.infer<typeof ENTRY>;
 

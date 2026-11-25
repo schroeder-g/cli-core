@@ -1,4 +1,10 @@
-import { afterEach, describe, expect, test } from 'bun:test';
+import {
+	afterEach,
+	describe,
+	expect,
+	setDefaultTimeout,
+	test,
+} from 'bun:test';
 
 import { freePort } from '../../testing/ports.ts';
 import { awaitListening, listenWithRetry } from '../listening.ts';
@@ -8,6 +14,10 @@ import type { ChildHandle } from '../spawn.ts';
 import { listener, SETTLE_MS } from './trees.ts';
 
 const RETRY_MS = 50;
+
+// Each test starts process trees, which a loaded machine slows past
+// bun's 5 s default.
+setDefaultTimeout(SETTLE_MS * 3);
 
 const started: ChildHandle[] = [];
 

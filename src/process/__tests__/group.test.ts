@@ -3,6 +3,7 @@ import {
 	beforeEach,
 	describe,
 	expect,
+	setDefaultTimeout,
 	test,
 } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -22,6 +23,10 @@ import { live, pidFileIn, SETTLE_MS, tree } from './trees.ts';
 const GRACE_MS = 300;
 
 const IGNORES_TERM = "process.on('SIGTERM', () => {});";
+
+// Each test starts process trees, which a loaded machine slows past
+// bun's 5 s default.
+setDefaultTimeout(SETTLE_MS * 3);
 
 let dir = '';
 
