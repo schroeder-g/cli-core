@@ -17,10 +17,8 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { object } from '@optique/core/constructs';
-
 import { fixture } from '../../core/__tests__/fixture.ts';
-import { commands } from '../../core/command.ts';
+import { builders } from '../../core/builders.ts';
 import type { Context } from '../../core/command.ts';
 import { Failure } from '../../core/errors.ts';
 import { configureLogging } from '../../core/logging.ts';
@@ -66,7 +64,7 @@ let dir = '';
 
 let lines: string[] = [];
 
-const { leaf } = commands<Context>();
+const { leaf } = builders<Context>();
 
 const ctx = testContext(ROOT);
 
@@ -260,9 +258,11 @@ describe('runPlan', () => {
 			finally: [noting('last', 'console.log("last-out")')],
 		};
 		const program = fixtureTree(
-			leaf('fx', 'Runs the fixture plan.', object({}), () =>
-				Promise.resolve(plan),
-			),
+			leaf({
+				name: 'fx',
+				description: 'Runs the fixture plan.',
+				plan: () => Promise.resolve(plan),
+			}),
 		);
 		const stdout = captured();
 		const stderr = captured();

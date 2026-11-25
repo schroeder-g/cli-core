@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { commands, defineProgram } from '@four7/cli-core';
+import { commands } from '@four7/cli-core';
 import type { Context } from '@four7/cli-core';
 import { defineConfig, verbatim } from '@four7/cli-core/config';
 import { presentView } from '@four7/cli-core/screen';
@@ -14,8 +14,6 @@ export interface NotesContext extends Context {
 	readonly file: string;
 }
 
-const { leaf, group } = commands<NotesContext>();
-
 export const config = defineConfig({
 	name: 'nt',
 	envPrefix: 'NT_',
@@ -25,11 +23,13 @@ export const config = defineConfig({
 	variables: { FILE: { path: ['file'], read: verbatim } },
 });
 
-const add = leaf(
-	'add',
-	'Add a note.',
-	object({ text: argument(string({ metavar: 'TEXT' })) }),
-	({ text }, ctx) =>
+const { leaf, group, program } = commands(config).over<NotesContext>();
+
+const add = leaf({
+	name: 'add',
+	description: 'Add a note.',
+	args: object({ text: argument(string({ metavar: 'TEXT' })) }),
+	plan: ({ text }, ctx) =>
 		Promise.resolve({
 			steps: [
 				{
@@ -39,22 +39,25 @@ const add = leaf(
 				},
 			],
 		}),
-);
+});
 
-const list = leaf('list', 'List the notes.', object({}), () =>
-	Promise.resolve({
-		readOnly: true,
-		describe: () => ['print the notes'],
-		run: async (ctx: NotesContext) => {
-			ctx.stdout.write(
-				await readFile(join(ctx.root, ctx.file), 'utf8'),
-			);
-			return 0;
-		},
-	}),
-);
+const list = leaf({
+	name: 'list',
+	description: 'List the notes.',
+	plan: () =>
+		Promise.resolve({
+			readOnly: true,
+			describe: () => ['print the notes'],
+			run: async (ctx: NotesContext) => {
+				ctx.stdout.write(
+					await readFile(join(ctx.root, ctx.file), 'utf8'),
+				);
+				return 0;
+			},
+		}),
+});
 
-export const nt = defineProgram<NotesContext, typeof config.defaults>({
+export const nt = program({
 	name: 'nt',
 	commands: [
 		group('notes', 'Keep notes.', add, list),
@@ -69,14 +72,19 @@ export const nt = defineProgram<NotesContext, typeof config.defaults>({
 					group(
 						'sync',
 						'Sync the notes.',
-						leaf('push', 'Push them.', object({}), () =>
-							Promise.resolve({
-								steps: [{ title: 'Push', cwd: '.', argv: ['true'] }],
-							}),
-						),
-						leaf('pull', 'Pull them.', object({}), () =>
-							Promise.resolve({ steps: [] }),
-						),
+						leaf({
+							name: 'push',
+							description: 'Push them.',
+							plan: () =>
+								Promise.resolve({
+									steps: [{ title: 'Push', cwd: '.', argv: ['true'] }],
+								}),
+						}),
+						leaf({
+							name: 'pull',
+							description: 'Pull them.',
+							plan: () => Promise.resolve({ steps: [] }),
+						}),
 					),
 				),
 		},
@@ -96,7 +104,6 @@ export const nt = defineProgram<NotesContext, typeof config.defaults>({
 			},
 		},
 	],
-	config,
 	session: run => ({
 		context: base => ({
 			...base,

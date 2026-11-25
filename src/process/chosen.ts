@@ -1,4 +1,4 @@
-import type { Action, Context } from '../core/command.ts';
+import type { Action, Awaitable, Context } from '../core/command.ts';
 import { INTERRUPTED } from '../core/exit.ts';
 import { planLines } from '../core/plan.ts';
 import type { Plan } from '../core/plan.ts';
@@ -16,7 +16,7 @@ export interface ChosenPlan<T, C extends Context> {
 	 * Asks for the choice, on a screen for one; `undefined` once an
 	 * interrupt or the input's end cut it short.
 	 */
-	readonly choose: (ctx: C) => Promise<Choice<T> | undefined>;
+	readonly choose: (ctx: C) => Awaitable<Choice<T> | undefined>;
 	readonly plan: (chosen: T) => Plan<C>;
 }
 

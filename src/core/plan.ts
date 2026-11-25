@@ -1,6 +1,6 @@
 import { relative, resolve } from 'node:path';
 
-import type { Action, Context } from './command.ts';
+import type { Action, Awaitable, Context } from './command.ts';
 import { hexEscape, isControl } from './text.ts';
 
 const PLAIN_WORD = /^[A-Za-z0-9_@%+=:,./-]+$/;
@@ -20,7 +20,7 @@ const ESCAPES: Readonly<Record<string, string>> = {
  */
 export interface Secret {
 	readonly ref: string;
-	resolve(): Promise<string>;
+	resolve(): Awaitable<string>;
 }
 
 /** @public */
@@ -40,7 +40,7 @@ export interface Step {
 	readonly stdout?: 'stderr';
 	readonly unless?: {
 		readonly describe: string;
-		check(): Promise<boolean>;
+		check(): Awaitable<boolean>;
 	};
 }
 

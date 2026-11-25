@@ -6,10 +6,9 @@ import { z } from 'zod';
 
 import { hermetic, runCaptured } from '../../testing/index.ts';
 import type { Run } from '../../testing/index.ts';
-import { commands } from '../command.ts';
 import type { Context } from '../command.ts';
 import { defineConfig, numeral, verbatim } from '../config.ts';
-import { defineProgram } from '../program.ts';
+import { commands } from '../program.ts';
 import type { RunProgramOptions } from '../program.ts';
 
 /** The lazy group's manifest, as help shows it before the group loads. */
@@ -18,8 +17,6 @@ export const LAZY = {
 	description: 'A group loaded on demand.',
 	leaves: { up: 'Bring it up.', down: 'Take it down.' },
 };
-
-const { leaf, group } = commands<Context>();
 
 const nothing = () => Promise.resolve({ steps: [] });
 
@@ -46,13 +43,15 @@ export const config = defineConfig({
 	},
 });
 
+const { leaf, group, program } = commands(config).over();
+
 export type FixtureConfig = typeof config.defaults;
 
 /**
  * A program over the base context: a lazy group, a group whose leaves
  * take a valued option and a flag, and a leaf.
  */
-export const fixture = defineProgram<Context, FixtureConfig>({
+export const fixture = program({
 	name: 'fx',
 	commands: [
 		{
@@ -62,36 +61,40 @@ export const fixture = defineProgram<Context, FixtureConfig>({
 					group(
 						LAZY.name,
 						LAZY.description,
-						leaf(
-							'up',
-							LAZY.leaves.up,
-							object({ environment }),
-							nothing,
-						),
-						leaf('down', LAZY.leaves.down, object({}), nothing),
+						leaf({
+							name: 'up',
+							description: LAZY.leaves.up,
+							args: object({ environment }),
+							plan: nothing,
+						}),
+						leaf({
+							name: 'down',
+							description: LAZY.leaves.down,
+							plan: nothing,
+						}),
 					),
 				),
 		},
 		group(
 			'dev',
 			'Run it here.',
-			leaf(
-				'start',
-				'Start it.',
-				object({
+			leaf({
+				name: 'start',
+				description: 'Start it.',
+				args: object({
 					services: optional(services),
 					fresh: flag('--fresh'),
 				}),
-				nothing,
-			),
-			leaf('stop', 'Stop it.', object({}), nothing),
+				plan: nothing,
+			}),
+			leaf({ name: 'stop', description: 'Stop it.', plan: nothing }),
 		),
-		leaf(
-			'doctor',
-			'Check it.',
-			object({ environment: optional(environment) }),
-			nothing,
-		),
+		leaf({
+			name: 'doctor',
+			description: 'Check it.',
+			args: object({ environment: optional(environment) }),
+			plan: nothing,
+		}),
 	],
 	screens: [
 		{
@@ -102,7 +105,6 @@ export const fixture = defineProgram<Context, FixtureConfig>({
 			},
 		},
 	],
-	config,
 	session: () => ({
 		context: base => ({ ...base, root: process.cwd() }),
 	}),

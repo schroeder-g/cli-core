@@ -2,51 +2,53 @@ import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { object } from '@optique/core/constructs';
-
 import { runCaptured } from '../../testing/index.ts';
-import { commands } from '../command.ts';
 import type { Context } from '../command.ts';
 import { Refusal } from '../errors.ts';
-import { defineProgram } from '../program.ts';
+import { commands } from '../program.ts';
 import type { ProgramSpec, RunProgramOptions } from '../program.ts';
 import { config } from './fixture.ts';
 import type { FixtureConfig } from './fixture.ts';
 
 const NO_HOME = join(tmpdir(), 'cli-root-no-home');
 
-const { leaf, group } = commands<Context>();
+const { leaf, group, program } = commands(config).over();
 
 type RootConfig = FixtureConfig;
 
 const load = (path: string | undefined) =>
 	config.load(path, { HOME: NO_HOME });
 
-const where = leaf('where', 'Print the root.', object({}), () =>
-	Promise.resolve({
-		readOnly: true,
-		describe: () => [],
-		run: (ctx: Context) => {
-			ctx.stdout.write(`${ctx.root}\n`);
-			return Promise.resolve(0);
-		},
-	}),
-);
+const where = leaf({
+	name: 'where',
+	description: 'Print the root.',
+	plan: () =>
+		Promise.resolve({
+			readOnly: true,
+			describe: () => [],
+			run: (ctx: Context) => {
+				ctx.stdout.write(`${ctx.root}\n`);
+				return Promise.resolve(0);
+			},
+		}),
+});
 
-const twice = leaf('twice', 'Plan two steps.', object({}), () =>
-	Promise.resolve({
-		steps: [
-			{ title: 'one', cwd: '.', argv: ['true'] },
-			{ title: 'two', cwd: '.', argv: ['true'] },
-		],
-	}),
-);
+const twice = leaf({
+	name: 'twice',
+	description: 'Plan two steps.',
+	plan: () =>
+		Promise.resolve({
+			steps: [
+				{ title: 'one', cwd: '.', argv: ['true'] },
+				{ title: 'two', cwd: '.', argv: ['true'] },
+			],
+		}),
+});
 
-const program = (root?: ProgramSpec<Context, RootConfig>['root']) =>
-	defineProgram<Context, RootConfig>({
+const rooted = (root?: ProgramSpec<Context, RootConfig>['root']) =>
+	program({
 		name: 'rt',
 		commands: [group('at', 'Where it runs.', where, twice)],
-		config,
 		root,
 		session: () => ({ context: base => base }),
 	});
@@ -57,7 +59,7 @@ const run = (
 	opts: RunProgramOptions<Context, RootConfig> = {},
 ) =>
 	runCaptured(
-		program(cwd => {
+		rooted(cwd => {
 			located.push(cwd);
 			if (cwd === '/outside')
 				throw new Refusal(`no root encloses ${cwd}`);
@@ -111,7 +113,7 @@ describe("the program's root", () => {
 	});
 
 	test('is the cwd when the program names no locator', async () => {
-		const printed = await runCaptured(program().run, ['at', 'where'], {
+		const printed = await runCaptured(rooted().run, ['at', 'where'], {
 			load,
 			cwd: '/plain',
 		});

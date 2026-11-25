@@ -39,9 +39,12 @@ import {
 	VERBOSE_SHORT,
 } from './argv.ts';
 import type { ArgvReader } from './argv.ts';
-import { commands, doc, isAction, isGroup, nameOf } from './command.ts';
+import { builders, isGroup } from './builders.ts';
+import { doc, isAction, nameOf } from './command.ts';
 import type {
+	Awaitable,
 	Command,
+	CommandBuilders,
 	CommandParser,
 	Context,
 	GroupManifest,
@@ -66,7 +69,7 @@ const BUILDER = 'i';
  */
 export interface LazyGroup<C extends Context> {
 	readonly manifest: GroupManifest;
-	readonly load: () => Promise<CommandParser<C>>;
+	readonly load: () => Awaitable<CommandParser<C>>;
 }
 
 /**
@@ -75,7 +78,7 @@ export interface LazyGroup<C extends Context> {
  */
 export interface Screen<C extends Context> {
 	readonly group: string;
-	open(ctx: C): Promise<number>;
+	open(ctx: C): Awaitable<number>;
 }
 
 /** What one run sets up, once its config is known to the loader. */
@@ -102,7 +105,6 @@ export interface ProgramSpec<C extends Context, T> {
 	readonly screens?: readonly Screen<C>[];
 	/** The leaf that opens the builder. */
 	readonly builder?: string;
-	readonly config: Config<T>;
 	/**
 	 * The root the run's steps resolve against, located from the
 	 * working directory; the working directory itself by default. It is
@@ -205,9 +207,43 @@ const namesGroup = (
 ): boolean =>
 	path.length > 0 && opened.length === path.length && levels.length > 0;
 
+/** A program: its tree, its run and what routing reads of an argv. */
+export interface DefinedProgram<C extends Context, T> {
+	/**
+	 * The tree and the builder's leaf under the globals, each lazy group
+	 * `loaded` names in place of its placeholder.
+	 */
+	readonly build: (
+		loaded?: ReadonlyMap<LazyGroup<C>, CommandParser<C>>,
+	) => Program<C>;
+	/**
+	 * The one entry for the flag path, the builder and the tests: parses
+	 * `argv`, then prints, runs or describes what the leaf planned.
+	 */
+	readonly run: (
+		argv: readonly string[],
+		opts?: RunProgramOptions<C, T>,
+	) => Promise<number>;
+	/**
+	 * Whether the run needs `group` loaded: the arguments open on it, a
+	 * completion request names it, or the builder is about to open, on
+	 * its leaf or on an argv of globals alone when stdin is a terminal.
+	 */
+	readonly needs: (
+		argv: readonly string[],
+		group: string,
+		stdinIsTTY?: boolean,
+	) => boolean;
+	/** The argv as the placeholders read it, before any group loads. */
+	readonly reader: ArgvReader;
+	/** The groups' names, as the builder's leaf completes them. */
+	readonly groupNames: readonly string[];
+}
+
 /** A program's spec with what its runs share. */
 interface Compiled<C extends Context, T> {
 	readonly spec: ProgramSpec<C, T>;
+	readonly config: Config<T>;
 	/** The argv as the placeholders read it, before any group loads. */
 	readonly reader: ArgvReader;
 	/** The tree for `argv`, each lazy group it needs loaded. */
@@ -244,7 +280,7 @@ async function runWith<C extends Context, T>(
 		readonly root: () => string;
 	},
 ): Promise<number> {
-	const { spec, reader, load } = compiled;
+	const { spec, config, reader, load } = compiled;
 	const stdin = opts.stdin ?? process.stdin;
 	const stdout = opts.stdout ?? process.stdout;
 	const stderr = opts.stderr ?? process.stderr;
@@ -255,17 +291,17 @@ async function runWith<C extends Context, T>(
 
 	// One load serves the configured flags and the session, so neither
 	// can read a config the other did not.
-	let config = spec.config.defaults;
+	let current = config.defaults;
 
 	const loadConfig = (parsed: unknown): LoadedConfig<T> => {
-		const loaded = (opts.load ?? spec.config.load)(configPath(parsed));
-		config = loaded.value;
+		const loaded = (opts.load ?? config.load)(configPath(parsed));
+		current = loaded.value;
 		return loaded;
 	};
 
 	const session =
 		reentered?.session
-		?? (opts.session ?? spec.session)({ config: () => config });
+		?? (opts.session ?? spec.session)({ config: () => current });
 
 	let located = opts.root;
 
@@ -294,7 +330,7 @@ async function runWith<C extends Context, T>(
 		},
 		contexts: reader.wantsHelp(argv)
 			? []
-			: [spec.config.context, ...(session.contexts ?? [])],
+			: [config.context, ...(session.contexts ?? [])],
 		contextOptions: { load: loadConfig },
 	};
 
@@ -449,31 +485,28 @@ async function runWith<C extends Context, T>(
 }
 
 /**
- * A program over `spec`: its tree, with each lazy group's placeholder
- * or the group itself, and the run that parses an argv and prints,
- * runs or describes what the leaf planned.
+ * A program over `config` and `spec`: its tree, with each lazy group's
+ * placeholder or the group itself, and the run that parses an argv and
+ * prints, runs or describes what the leaf planned.
  */
-export function defineProgram<C extends Context, T>(
+function defineProgram<C extends Context, T>(
+	config: Config<T>,
 	spec: ProgramSpec<C, T>,
-) {
+): DefinedProgram<C, T> {
 	const builderLeaf = spec.builder ?? BUILDER;
-	const { lazyGroup } = commands<C>();
+	const { lazyGroup } = builders<C>();
 
 	// Stands in for a lazy group in help and completion; routing loads
 	// the real one before any argv that opens on it is parsed.
 	const placeholders = new Map(
-		spec.commands
-			.filter(isLazy)
-			.map(group => [
-				group,
-				lazyGroup(group.manifest, () =>
-					Promise.reject(
-						new Failure(
-							`the ${group.manifest.name} group was not loaded for this invocation`,
-						),
-					),
-				),
-			]),
+		spec.commands.filter(isLazy).map(group => [
+			group,
+			lazyGroup(group.manifest, () => {
+				throw new Failure(
+					`the ${group.manifest.name} group was not loaded for this invocation`,
+				);
+			}),
+		]),
 	);
 
 	const resolveAll = (
@@ -497,10 +530,6 @@ export function defineProgram<C extends Context, T>(
 		{ description: doc('Build a command interactively, at a group.') },
 	);
 
-	/**
-	 * The tree and the builder's leaf under the globals, each lazy group
-	 * `loaded` names in place of its placeholder.
-	 */
 	const build = (
 		loaded: ReadonlyMap<LazyGroup<C>, CommandParser<C>> = new Map(),
 	): Program<C> => {
@@ -512,11 +541,6 @@ export function defineProgram<C extends Context, T>(
 
 	const reader: ArgvReader = argvReader(valuedOptions(build().usage));
 
-	/**
-	 * Whether the run needs `group` loaded: the arguments open on it, a
-	 * completion request names it, or the builder is about to open, on
-	 * its leaf or on an argv of globals alone when stdin is a terminal.
-	 */
 	const needs = (
 		argv: readonly string[],
 		group: string,
@@ -546,14 +570,42 @@ export function defineProgram<C extends Context, T>(
 		return build(new Map(loaded));
 	};
 
-	/**
-	 * The one entry for the flag path, the builder and the tests: parses
-	 * `argv`, then prints, runs or describes what the leaf planned.
-	 */
 	const run = (
 		argv: readonly string[],
 		opts: RunProgramOptions<C, T> = {},
-	): Promise<number> => runWith({ spec, reader, load }, argv, opts);
+	): Promise<number> =>
+		runWith({ spec, config, reader, load }, argv, opts);
 
 	return { build, run, needs, reader, groupNames };
+}
+
+/**
+ * The builders over the context `C`, and the program over them and the
+ * config.
+ */
+export interface Commands<
+	C extends Context,
+	T,
+> extends CommandBuilders<C> {
+	readonly program: (spec: ProgramSpec<C, T>) => DefinedProgram<C, T>;
+}
+
+/** A program's config, waiting for the context its commands plan over. */
+export interface ConfiguredCommands<T> {
+	/** The builders and the program over the context `C`. */
+	over<C extends Context = Context>(): Commands<C, T>;
+}
+
+/**
+ * The command builders and the program over `config`: the config's
+ * type comes from it, and `over` names the context once, so neither is
+ * named again.
+ */
+export function commands<T>(config: Config<T>): ConfiguredCommands<T> {
+	return {
+		over: <C extends Context = Context>(): Commands<C, T> => ({
+			...builders<C>(),
+			program: spec => defineProgram(config, spec),
+		}),
+	};
 }

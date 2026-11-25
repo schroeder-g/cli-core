@@ -20,7 +20,7 @@ import { option } from '@optique/core/primitives';
 import { string } from '@optique/core/valueparser';
 
 import { fixtureTree, runCaptured } from '../../testing/index.ts';
-import { commands } from '../command.ts';
+import { builders } from '../builders.ts';
 import type { Context } from '../command.ts';
 import type { Environment } from '../config.ts';
 import { config, fixture } from './fixture.ts';
@@ -33,23 +33,23 @@ let dir = '';
 
 let seen: Seen | undefined;
 
-const { leaf } = commands<Context>();
+const { leaf } = builders<Context>();
 
 const program = fixtureTree(
-	leaf(
-		'fx',
-		'Fixture.',
-		object({
+	leaf({
+		name: 'fx',
+		description: 'Fixture.',
+		args: object({
 			greeting: config.configured(
 				option('--greeting', string()),
 				c => c.greeting,
 			),
 		}),
-		value => {
+		plan: value => {
 			seen = { greeting: value.greeting };
 			return Promise.resolve({ steps: [] });
 		},
-	),
+	}),
 );
 
 /** A run under `env` alone, its home in the scratch directory. */

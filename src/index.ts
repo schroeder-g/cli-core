@@ -1,5 +1,6 @@
 export * from './core/argv.ts';
 export * from './core/command.ts';
+export { isGroup } from './core/builders.ts';
 export * from './core/confirm.ts';
 export * from './core/errors.ts';
 export * from './core/exit.ts';
