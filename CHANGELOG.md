@@ -1,5 +1,11 @@
 # @four7/cli-core
 
+## 0.2.0-next.2
+
+### Patch Changes
+
+- [#8](https://github.com/schroeder-g/cli-core/pull/8) [`e8c87f2`](https://github.com/schroeder-g/cli-core/commit/e8c87f22a25a4d486c35785c61fe16e23add6cee) Thanks [@schroeder-g](https://github.com/schroeder-g)! - Completion offers a command's flags, long ones included, on a lone dash, and on an empty word where no command, argument or value is offered. `drift propose <TAB>` used to offer only `-h` and `--help`, and `drift propose -<TAB>` only the global short flags.
+
 ## 0.2.0-next.1
 
 ### Minor Changes

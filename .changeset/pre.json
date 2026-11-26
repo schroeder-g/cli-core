@@ -9,6 +9,7 @@
     "atoms",
     "checklist",
     "checks",
+    "completion-flags",
     "git",
     "help-sections",
     "leaves-only",
