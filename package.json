@@ -1,6 +1,6 @@
 {
 	"name": "@four7/cli-core",
-	"version": "0.2.0-next.1",
+	"version": "0.2.0-next.2",
 	"description": "A command-line program core for Bun: commands that plan before they run, Optique parsing, TOML config, Ink screens and a form builder",
 	"license": "MIT",
 	"author": "Alex Goncalves <schroedergoncalves@gmail.com>",
