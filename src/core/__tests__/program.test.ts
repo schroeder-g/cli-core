@@ -234,6 +234,47 @@ describe('the program run', () => {
 		expect(groups.stdout).not.toMatch(/^doctor\b/m);
 	});
 
+	test("completes a leaf's flags, long ones included, on nothing or a dash", async () => {
+		for (const word of ['', '-']) {
+			const { stdout } = await run([
+				'completion',
+				'zsh',
+				'dev',
+				'start',
+				word,
+			]);
+			expect(stdout).toMatch(/^--fresh\b/m);
+			expect(stdout).toMatch(/^--dry-run\b/m);
+		}
+		const dashed = await run([
+			'completion',
+			'zsh',
+			'dev',
+			'start',
+			'-',
+		]);
+		expect(dashed.stdout).toMatch(/^-q\b/m);
+	});
+
+	test('completes no flag where an option waits for its value', async () => {
+		for (const word of ['', '-']) {
+			const { stdout } = await run([
+				'completion',
+				'zsh',
+				'doctor',
+				'--env',
+				word,
+			]);
+			expect(stdout).not.toMatch(/^--dry-run\b/m);
+		}
+	});
+
+	test('completes a group with its commands alone', async () => {
+		const { stdout } = await run(['completion', 'zsh', 'dev', '']);
+		expect(stdout).toMatch(/^start\b/m);
+		expect(stdout).not.toMatch(/^--dry-run\b/m);
+	});
+
 	test('loads a lazy group only for an argv that opens on it', async () => {
 		const loads = (text: string) =>
 			text.split('loading infra').length - 1;

@@ -25,6 +25,7 @@ import { openBuilder } from '../builder/index.ts';
 import { place } from '../builder/fields.ts';
 import type { Place } from '../builder/fields.ts';
 import { runPlan } from '../process/run.ts';
+import { offeringFlags } from './completion.ts';
 import {
 	COMMANDS_SECTION,
 	FLAGS_SECTION,
@@ -198,9 +199,11 @@ const globals = object({
 export function withGlobals<C extends Context>(
 	tree: Parser<Mode, Command<C> | BuilderRequest, unknown>,
 ): Program<C> {
-	return merge(
-		section(COMMANDS_SECTION, tree),
-		section(FLAGS_SECTION, globals),
+	return offeringFlags(
+		merge(
+			section(COMMANDS_SECTION, tree),
+			section(FLAGS_SECTION, globals),
+		),
 	);
 }
 
